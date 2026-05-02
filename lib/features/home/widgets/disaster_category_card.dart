@@ -16,13 +16,13 @@ class DisasterCategoryCard extends StatelessWidget {
   });
 
   static const List<_DisasterStyle> _styles = [
-    _DisasterStyle(
-      gradient: [Color(0xFF1565C0), Color(0xFF1976D2)],
+  _DisasterStyle(
+      gradient: [Color.fromARGB(255, 211, 14, 14), Color.fromARGB(255, 207, 109, 16)],
       iconBg: Color(0x331976D2),
       icon: Icons.terrain_rounded, // Gempa
     ),
     _DisasterStyle(
-      gradient: [Color(0xFF0277BD), Color(0xFF0288D1)],
+      gradient: [Color(0xFF0277BD), Color.fromARGB(255, 1, 91, 139)],
       iconBg: Color(0x330288D1),
       icon: Icons.water_rounded, // Banjir
     ),

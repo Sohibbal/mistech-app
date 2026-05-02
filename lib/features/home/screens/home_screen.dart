@@ -62,10 +62,10 @@ class _HomeScreenState extends State<HomeScreen> {
           String rawUrl = item['file_url'];
           
           String finalUrl = rawUrl;
-          if (finalUrl.contains('192.168.1.8:3000')) {
-            finalUrl = finalUrl.replaceAll('192.168.1.8:3000', '192.168.8.100:3000');
+          if (finalUrl.contains('mistech.up.railway.app')) {
+            finalUrl = finalUrl.replaceAll('https://mistech.up.railway.app', 'https://mistech.up.railway.app');
           } else if (finalUrl.startsWith('/')) {
-            finalUrl = 'http://192.168.8.100:3000$finalUrl';
+            finalUrl = 'https://mistech.up.railway.app$finalUrl';
           }
           
           if (type == 'LKPD' && _lkpdUrl == null) {
@@ -198,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         context,
                         title: 'LKPD',
                         icon: Icons.assignment_rounded,
-                        color: Colors.blue,
+                        color: AppColors.primary,
                         url: _lkpdUrl ?? 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
                       );
                     } else {

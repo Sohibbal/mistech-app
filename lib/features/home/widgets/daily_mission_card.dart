@@ -91,7 +91,7 @@ class _DailyMissionCardState extends State<DailyMissionCard> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppColors.primary, Color(0xFF1976D2), AppColors.secondary],
+              colors: [AppColors.primary, Color.fromARGB(255, 3, 87, 60)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),

@@ -4,9 +4,37 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+
+// Top-level function untuk dijalankan di dalam Isolate (Compute)
+List<double> _processImage(Uint8List imageBytes) {
+  // 1. Decode gambar
+  img.Image? originalImage = img.decodeImage(imageBytes);
+  if (originalImage == null) throw Exception("Gagal decode gambar");
+
+  // 2. Resize ke 224x224 sesuai dengan input model
+  img.Image resizedImage = img.copyResize(originalImage, width: 224, height: 224);
+
+  // 3. Konversi ke Float32List
+  int inputSize = 224;
+  double mean = 127.5; // Keras/Teachable Machine defaults
+  double std = 127.5;
+
+  var convertedBytes = Float32List(1 * inputSize * inputSize * 3);
+  var buffer = Float32List.view(convertedBytes.buffer);
+  int pixelIndex = 0;
+  for (int i = 0; i < inputSize; i++) {
+    for (int j = 0; j < inputSize; j++) {
+      var pixel = resizedImage.getPixel(j, i);
+      buffer[pixelIndex++] = (pixel.r - mean) / std;
+      buffer[pixelIndex++] = (pixel.g - mean) / std;
+      buffer[pixelIndex++] = (pixel.b - mean) / std;
+    }
+  }
+  return convertedBytes.toList();
+}
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
@@ -20,8 +48,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
   Interpreter? _interpreter;
   bool _isProcessing = false;
   bool _isModelLoaded = false;
+  File? _capturedImage;
 
-  String _result = 'Menganalisis...';
+  String _result = 'Arahkan kamera ke sampah';
   double _confidence = 0.0;
 
   // Labels for the 12 categories
@@ -50,7 +79,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
       debugPrint('Output tensors: ${_interpreter!.getOutputTensors()}');
       setState(() {
         _isModelLoaded = true;
-        _result = 'Arahkan kamera ke sampah';
       });
     } catch (e) {
       debugPrint('❌ Failed to load model: $e');
@@ -72,49 +100,51 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
       _cameraController = CameraController(
         camera,
-        ResolutionPreset.medium,
+        ResolutionPreset.high,
         enableAudio: false,
-        imageFormatGroup: Platform.isIOS 
-            ? ImageFormatGroup.bgra8888 
-            : ImageFormatGroup.yuv420,
       );
 
       await _cameraController!.initialize();
 
       if (!mounted) return;
       setState(() {});
-
-      // Always start image stream — inference only runs if model is loaded
-      _cameraController!.startImageStream((CameraImage image) {
-        if (!_isProcessing && _isModelLoaded) {
-          _processCameraImage(image);
-        }
-      });
     } catch (e) {
       debugPrint('Camera error: $e');
     }
   }
 
-  void _processCameraImage(CameraImage image) async {
-    _isProcessing = true;
+  Future<void> _takePictureAndProcess() async {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
+    if (_isProcessing || !_isModelLoaded) return;
+
+    setState(() {
+      _isProcessing = true;
+      _result = 'Memproses...';
+    });
+
     try {
-      if (_interpreter == null) return;
+      // 1. Ambil foto
+      final XFile file = await _cameraController!.takePicture();
+      final File imageFile = File(file.path);
 
-      img.Image? convertedImage = _convertCameraImage(image);
-      if (convertedImage == null) return;
+      setState(() {
+        _capturedImage = imageFile;
+      });
 
-      // Resize image to 640x640 (standard YOLOv8 / Classification size)
-      img.Image resizedImage = img.copyResize(convertedImage, width: 640, height: 640);
+      // 2. Decode, resize, dan konversi gambar di Isolate terpisah agar UI tidak freeze
+      final Uint8List imageBytes = await imageFile.readAsBytes();
+      
+      // Jalankan proses berat di background thread (Isolate)
+      final List<double> inputList = await compute(_processImage, imageBytes);
+      var input = inputList.reshape([1, 224, 224, 3]);
 
-      // Convert image to Float32 array [1, 640, 640, 3]
-      var input = _imageToByteListFloat32(resizedImage, 640, 0, 255.0);
-
-      // Setup output tensor [1, 12]
+      // 3. Setup output tensor
       var output = List.filled(1 * 12, 0.0).reshape([1, 12]);
 
-      // Run Inference
+      // 4. Jalankan inferensi
       _interpreter!.run(input, output);
 
+      // 6. Ambil hasil probabilitas tertinggi
       List<double> probabilities = (output[0] as List).cast<double>();
       
       double maxConf = 0;
@@ -132,104 +162,58 @@ class _ScannerScreenState extends State<ScannerScreen> {
             _result = _formatLabel(_labels[maxIndex]);
             _confidence = maxConf;
           } else {
-            _result = 'Mencari objek...';
+            _result = 'Objek tidak dikenali';
             _confidence = 0.0;
           }
         });
       }
     } catch (e) {
       debugPrint('Inference error: $e');
+      if (mounted) {
+        setState(() {
+          _result = 'Terjadi kesalahan';
+          _confidence = 0.0;
+        });
+      }
     } finally {
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (mounted) _isProcessing = false;
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
     }
   }
 
   String _formatLabel(String raw) {
     final map = {
-      'battery': 'Baterai (B3)',
-      'biological': 'Biologis / Organik',
-      'brown-glass': 'Kaca Cokelat',
-      'cardboard': 'Kardus',
-      'clothes': 'Pakaian',
-      'green-glass': 'Kaca Hijau',
-      'metal': 'Logam / Kaleng',
-      'paper': 'Kertas',
-      'plastic': 'Plastik',
-      'shoes': 'Sepatu',
-      'trash': 'Sampah Residu',
-      'white-glass': 'Kaca Putih'
+      'battery': 'Anorganik',
+      'biological': 'Organik',
+      'brown-glass': 'Anorganik',
+      'cardboard': 'Organik',
+      'clothes': 'Organik',
+      'green-glass': 'Anorganik',
+      'metal': 'Anorganik',
+      'paper': 'Organik',
+      'plastic': 'Anorganik',
+      'shoes': 'Anorganik',
+      'trash': 'Organik',
+      'white-glass': 'Anorganik'
     };
     return map[raw] ?? raw;
   }
 
-  // --- Image Processing Utilities ---
 
-  img.Image? _convertCameraImage(CameraImage image) {
-    if (image.format.group == ImageFormatGroup.yuv420) {
-      return _convertYUV420ToImage(image);
-    } else if (image.format.group == ImageFormatGroup.bgra8888) {
-      return _convertBGRA8888ToImage(image);
-    }
-    return null;
-  }
 
-  img.Image _convertBGRA8888ToImage(CameraImage image) {
-    return img.Image.fromBytes(
-      width: image.width,
-      height: image.height,
-      bytes: image.planes[0].bytes.buffer,
-      order: img.ChannelOrder.bgra,
-    );
-  }
-
-  img.Image _convertYUV420ToImage(CameraImage image) {
-    final int width = image.width;
-    final int height = image.height;
-    final int uvRowStride = image.planes[1].bytesPerRow;
-    final int uvPixelStride = image.planes[1].bytesPerPixel!;
-
-    final img.Image finalImage = img.Image(width: width, height: height);
-
-    for (int y = 0; y < height; y++) {
-      int pY = y * image.planes[0].bytesPerRow;
-      int pUV = (y >> 1) * uvRowStride;
-
-      for (int x = 0; x < width; x++) {
-        int uvOffset = pUV + (x >> 1) * uvPixelStride;
-
-        final yp = image.planes[0].bytes[pY + x];
-        final up = image.planes[1].bytes[uvOffset];
-        final vp = image.planes[2].bytes[uvOffset];
-
-        int r = (yp + vp * 1436 / 1024 - 179).round().clamp(0, 255);
-        int g = (yp - up * 46549 / 131072 + 44 - vp * 93604 / 131072 + 91).round().clamp(0, 255);
-        int b = (yp + up * 1814 / 1024 - 227).round().clamp(0, 255);
-
-        finalImage.setPixelRgb(x, y, r, g, b);
-      }
-    }
-    return finalImage;
-  }
-
-  List<double> _imageToByteListFloat32(img.Image image, int inputSize, double mean, double std) {
-    var convertedBytes = Float32List(1 * inputSize * inputSize * 3);
-    var buffer = Float32List.view(convertedBytes.buffer);
-    int pixelIndex = 0;
-    for (int i = 0; i < inputSize; i++) {
-      for (int j = 0; j < inputSize; j++) {
-        var pixel = image.getPixel(j, i);
-        buffer[pixelIndex++] = (pixel.r - mean) / std;
-        buffer[pixelIndex++] = (pixel.g - mean) / std;
-        buffer[pixelIndex++] = (pixel.b - mean) / std;
-      }
-    }
-    return convertedBytes.toList();
+  void _resetScanner() {
+    setState(() {
+      _capturedImage = null;
+      _result = 'Arahkan kamera ke sampah';
+      _confidence = 0.0;
+    });
   }
 
   @override
   void dispose() {
-    _cameraController?.stopImageStream();
     _cameraController?.dispose();
     _interpreter?.close();
     super.dispose();
@@ -241,8 +225,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Camera Background
-          if (_cameraController != null && _cameraController!.value.isInitialized)
+          // 1. Background (Camera or Captured Image)
+          if (_capturedImage != null)
+            Positioned.fill(
+              child: Image.file(_capturedImage!, fit: BoxFit.cover),
+            )
+          else if (_cameraController != null && _cameraController!.value.isInitialized)
             Positioned.fill(
               child: AspectRatio(
                 aspectRatio: _cameraController!.value.aspectRatio,
@@ -252,35 +240,36 @@ class _ScannerScreenState extends State<ScannerScreen> {
           else
             const Center(child: CircularProgressIndicator(color: AppColors.primary)),
 
-          // Dimmer
+          // 2. Dimmer
           Positioned.fill(
             child: Container(color: Colors.black.withOpacity(0.3)),
           ),
 
-          // Scanner Frame
-          Positioned.fill(
-            child: Align(
-              alignment: Alignment.center,
-              child: Container(
-                width: 280,
-                height: 280,
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.primary, width: 3),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Stack(
-                  children: [
-                    _buildCorner(Alignment.topLeft),
-                    _buildCorner(Alignment.topRight),
-                    _buildCorner(Alignment.bottomLeft),
-                    _buildCorner(Alignment.bottomRight),
-                  ],
+          // 3. Scanner Frame (only if not captured yet)
+          if (_capturedImage == null)
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.center,
+                child: Container(
+                  width: MediaQuery.of(context).size.width * 0.85, // Diperbesar jadi 85% lebar layar
+                  height: MediaQuery.of(context).size.width * 0.85,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.primary, width: 3),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Stack(
+                    children: [
+                      _buildCorner(Alignment.topLeft),
+                      _buildCorner(Alignment.topRight),
+                      _buildCorner(Alignment.bottomLeft),
+                      _buildCorner(Alignment.bottomRight),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // App Bar
+          // 4. App Bar
           Positioned(
             top: 50,
             left: 20,
@@ -312,7 +301,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           ),
 
-          // Warning if model not found
+          // 5. Warning if model not found
           if (!_isModelLoaded)
             Positioned(
               top: 120,
@@ -325,76 +314,164 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
-                  'Model ML belum diatur. Masukkan model.tflite ke folder assets/ml/',
+                  'Model ML belum dimuat. Periksa file model.tflite',
                   style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
               ),
             ),
 
-          // Bottom Info Card
-          Positioned(
-            bottom: 40,
-            left: 20,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.15),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  )
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Objek Terdeteksi:',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      color: AppColors.textSecondary,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _result,
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      color: _confidence > 0 ? AppColors.primary : AppColors.textPrimary,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (_confidence > 0) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.successLight,
-                        borderRadius: BorderRadius.circular(20),
+          // 6. Processing Indicator
+          if (_isProcessing)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: AppColors.primary),
+                      SizedBox(height: 16),
+                      Text(
+                        'Memproses gambar...',
+                        style: TextStyle(color: Colors.white, fontFamily: 'Poppins'),
                       ),
-                      child: Text(
-                        'Akurasi: ${(_confidence * 100).toStringAsFixed(1)}%',
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          color: AppColors.success,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // 7. Bottom Controls (Capture button OR Result Card)
+          if (_capturedImage == null) ...[
+            // Capture Button
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: GestureDetector(
+                  onTap: (_isProcessing || !_isModelLoaded) ? null : _takePictureAndProcess,
+                  child: Container(
+                    height: 80,
+                    width: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 4),
+                      color: (_isProcessing || !_isModelLoaded) ? Colors.grey : AppColors.primary,
+                    ),
+                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 40),
+                  ),
+                ),
+              ),
+            ),
+            // Text hint
+            Positioned(
+              bottom: 130,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'Posisikan sampah di dalam bingkai',
+                    style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: 12),
+                  ),
+                ),
+              ),
+            ),
+          ] else ...[
+            // Result Card
+            Positioned(
+              bottom: 40,
+              left: 20,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    )
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Objek Terdeteksi:',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _result,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        color: _confidence > 0 ? AppColors.primary : AppColors.textPrimary,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    if (_confidence > 0) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.successLight,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          'Akurasi: ${(_confidence * 100).toStringAsFixed(1)}%',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _resetScanner,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Scan Ulang',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
             ),
-          ),
+          ]
         ],
       ),
     );
@@ -422,3 +499,4 @@ class _ScannerScreenState extends State<ScannerScreen> {
     );
   }
 }
+

@@ -2,70 +2,70 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  // Primary Blue Palette
-  static const Color primary = Color(0xFF1565C0);
-  static const Color primaryLight = Color(0xFF1976D2);
-  static const Color primaryLighter = Color(0xFF2196F3);
-  static const Color primaryAccent = Color(0xFF42A5F5);
-  static const Color primarySurface = Color(0xFFE3F2FD);
-  static const Color primarySurface2 = Color(0xFFBBDEFB);
+  // Primary Emerald Palette
+  static const Color primary = Color(0xFF10B981);
+  static const Color primaryLight = Color(0xFF059669);
+  static const Color primaryLighter = Color(0xFF34D399);
+  static const Color primaryAccent = Color(0xFFA7F3D0);
+  static const Color primarySurface = Color(0xFFECFDF5);
+  static const Color primarySurface2 = Color(0xFFD1FAE5);
 
   // Secondary / Accent
-  static const Color secondary = Color(0xFF0288D1);
-  static const Color secondaryLight = Color(0xFF03A9F4);
-  static const Color accent = Color(0xFF00BCD4);
+  static const Color secondary = Color(0xFF059669);
+  static const Color secondaryLight = Color(0xFF10B981);
+  static const Color accent = Color(0xFF0EA5E9);
 
   // Background
-  static const Color background = Color(0xFFF8FBFF);
+  static const Color background = Color(0xFFF8FAFC);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceElevated = Color(0xFFF0F7FF);
+  static const Color surfaceElevated = Color(0xFFF0FDF4);
   static const Color cardBackground = Color(0xFFFFFFFF);
 
   // Text
-  static const Color textPrimary = Color(0xFF0D1B2A);
-  static const Color textSecondary = Color(0xFF4A6080);
-  static const Color textTertiary = Color(0xFF8EA8C3);
+  static const Color textPrimary = Color(0xFF1E293B);
+  static const Color textSecondary = Color(0xFF475569);
+  static const Color textTertiary = Color(0xFF64748B);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
 
   // Status Colors
-  static const Color success = Color(0xFF00C897);
-  static const Color successLight = Color(0xFFE8FFF6);
-  static const Color warning = Color(0xFFFF9800);
-  static const Color warningLight = Color(0xFFFFF3E0);
-  static const Color error = Color(0xFFE53935);
-  static const Color errorLight = Color(0xFFFFEBEE);
-  static const Color info = Color(0xFF1565C0);
-  static const Color infoLight = Color(0xFFE3F2FD);
+  static const Color success = Color(0xFF10B981);
+  static const Color successLight = Color(0xFFECFDF5);
+  static const Color warning = Color(0xFFFACC15);
+  static const Color warningLight = Color(0xFFFEFCE8);
+  static const Color error = Color(0xFFEF4444);
+  static const Color errorLight = Color(0xFFFEF2F2);
+  static const Color info = Color(0xFF0EA5E9);
+  static const Color infoLight = Color(0xFFF0F9FF);
 
   // Disaster Phase Colors
-  static const Color praBencana = Color(0xFF1565C0);
-  static const Color praBencanaLight = Color(0xFFE3F2FD);
-  static const Color saatBencana = Color(0xFFE53935);
-  static const Color saatBencanaLight = Color(0xFFFFEBEE);
-  static const Color pascaBencana = Color(0xFF2E7D32);
-  static const Color pascaBencanaLight = Color(0xFFE8F5E9);
+  static const Color praBencana = Color(0xFF0EA5E9);
+  static const Color praBencanaLight = Color(0xFFF0F9FF);
+  static const Color saatBencana = Color(0xFFEF4444);
+  static const Color saatBencanaLight = Color(0xFFFEF2F2);
+  static const Color pascaBencana = Color(0xFF10B981);
+  static const Color pascaBencanaLight = Color(0xFFECFDF5);
 
   // Borders & Dividers
-  static const Color border = Color(0xFFDCEEFB);
-  static const Color divider = Color(0xFFE8F4FD);
+  static const Color border = Color(0xFFE2E8F0);
+  static const Color divider = Color(0xFFF1F5F9);
 
   // Gradient
   static const List<Color> primaryGradient = [
-    Color(0xFF1565C0),
-    Color(0xFF0288D1),
-    Color(0xFF00BCD4),
+    Color(0xFF10B981),
+    Color(0xFF059669),
+    Color(0xFF0EA5E9),
   ];
 
   static const List<Color> splashGradient = [
-    Color(0xFF0D47A1),
-    Color(0xFF1565C0),
-    Color(0xFF1976D2),
-    Color(0xFF0288D1),
+    Color(0xFF064E3B),
+    Color(0xFF047857),
+    Color(0xFF059669),
+    Color(0xFF10B981),
   ];
 
   static const List<Color> cardGradient = [
-    Color(0xFF1565C0),
-    Color(0xFF1976D2),
+    Color(0xFF10B981),
+    Color(0xFF059669),
   ];
 }
 
