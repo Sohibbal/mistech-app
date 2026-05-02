@@ -27,10 +27,23 @@ class NewsModel {
       } catch (_) {}
     }
 
+    String? rawImg = json['image_url'];
+    String finalImg = 'https://images.unsplash.com/photo-1547683905-f686c993b472?q=80&w=1000&auto=format&fit=crop';
+    if (rawImg != null && rawImg.isNotEmpty) {
+      if (rawImg.startsWith('/')) {
+        finalImg = 'http://192.168.8.100:3000$rawImg';
+      } else {
+        finalImg = rawImg
+            .replaceAll('192.168.1.8:3000', '192.168.8.100:3000')
+            .replaceAll('localhost:3000', '192.168.8.100:3000')
+            .replaceAll('127.0.0.1:3000', '192.168.8.100:3000');
+      }
+    }
+
     return NewsModel(
-      id: json['id'] ?? '',
+      id: json['id']?.toString() ?? '',
       title: json['title'] ?? '',
-      thumbnail: json['image_url'] ?? 'https://images.unsplash.com/photo-1547683905-f686c993b472?q=80&w=1000&auto=format&fit=crop',
+      thumbnail: finalImg,
       content: json['content'] ?? '',
       source: json['source'] ?? 'E-Disaster News',
       date: formattedDate,

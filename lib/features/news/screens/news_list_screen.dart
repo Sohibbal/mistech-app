@@ -61,19 +61,7 @@ class _NewsListScreenState extends State<NewsListScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => context.go('/home'),
-            child: const Text(
-              'Ke Beranda',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
-              ),
-            ),
-          )
-        ],
+
       ),
       body: RefreshIndicator(
         onRefresh: _fetchNews,

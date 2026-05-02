@@ -252,24 +252,27 @@ class _DisasterPhaseScreenState extends State<DisasterPhaseScreen> {
                     ),
                   ],
                 ),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _onLanjutPressed,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _phaseColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                child: SafeArea(
+                  top: false,
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _onLanjutPressed,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _phaseColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      widget.phase == 'pasca' ? 'Selesai Belajar' : 'Lanjut Fase Berikutnya',
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                      child: Text(
+                        widget.phase == 'pasca' ? 'Selesai Belajar' : 'Lanjut Fase Berikutnya',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),

@@ -6,6 +6,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../providers/disaster_provider.dart';
 import '../../../providers/quiz_provider.dart';
 import '../../../data/models/disaster_model.dart';
@@ -24,6 +26,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentNavIndex = 0;
   String _userName = 'Pengguna';
+  String? _lkpdUrl;
+  String? _eModulUrl;
 
   @override
   void initState() {
@@ -35,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     _loadUserName();
+    _fetchMaterials();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DisasterProvider>().loadDisasters();
     });
@@ -47,11 +52,42 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Future<void> _fetchMaterials() async {
+    try {
+      final response = await ApiClient.instance.get('/materials');
+      if (response.data['status'] == 'success') {
+        final list = response.data['data'] as List<dynamic>? ?? [];
+        for (var item in list) {
+          final type = item['type'];
+          String rawUrl = item['file_url'];
+          
+          String finalUrl = rawUrl;
+          if (finalUrl.contains('192.168.1.8:3000')) {
+            finalUrl = finalUrl.replaceAll('192.168.1.8:3000', '192.168.8.100:3000');
+          } else if (finalUrl.startsWith('/')) {
+            finalUrl = 'http://192.168.8.100:3000$finalUrl';
+          }
+          
+          if (type == 'LKPD' && _lkpdUrl == null) {
+            _lkpdUrl = finalUrl;
+          } else if (type == 'E-MODUL' && _eModulUrl == null) {
+            _eModulUrl = finalUrl;
+          }
+        }
+        if (mounted) setState(() {});
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(child: _buildBody()),
+      floatingActionButton: _buildScannerFAB(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _buildBottomNav(),
     );
   }
@@ -60,8 +96,6 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (_currentNavIndex) {
       case 0:
         return _buildHomeContent();
-      case 1:
-        return _buildScannerContent();
       case 2:
         return const QuizListScreen();
       default:
@@ -77,6 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
       dProv.loadDisasters(),
       qProv.loadQuizList(),
       _loadUserName(),
+      _fetchMaterials(),
     ]);
   }
 
@@ -164,8 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         title: 'LKPD',
                         icon: Icons.assignment_rounded,
                         color: Colors.blue,
-                        url:
-                            'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                        url: _lkpdUrl ?? 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
                       );
                     } else {
                       return _buildPdfCard(
@@ -173,8 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         title: 'E-Modul',
                         icon: Icons.menu_book_rounded,
                         color: Colors.orange,
-                        url:
-                            'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                        url: _eModulUrl ?? 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
                       );
                     }
                   },
@@ -305,90 +338,72 @@ class _HomeScreenState extends State<HomeScreen> {
     ).animate().fadeIn(duration: 400.ms);
   }
 
-  // ─── SCANNER TAB ────────────────────────────────
-  Widget _buildScannerContent() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.secondary],
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.qr_code_scanner_rounded,
-                  color: Colors.white, size: 48),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Scanner',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Fitur scanner QR code untuk identifikasi bencana dan informasi darurat.\n\nSegera hadir!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                height: 1.6,
-              ),
-            ),
-          ],
+
+
+  Widget _buildScannerFAB() {
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, AppColors.secondary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: FloatingActionButton(
+        onPressed: () => context.push('/scanner'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        highlightElevation: 0,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 28),
       ),
     );
   }
 
   // ─── BOTTOM NAV ─────────────────────────────────
   Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
+    return Theme(
+      data: Theme.of(context).copyWith(
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
       ),
-      child: SafeArea(
-        child: SizedBox(
-          height: 64,
-          child: Row(
+      child: BottomAppBar(
+        color: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8.0,
+        elevation: 20,
+        shadowColor: AppColors.primary.withOpacity(0.5),
+        padding: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        child: SafeArea(
+          child: SizedBox(
+            height: 68,
+            child: Row(
             children: [
               // Home
               Expanded(
                   child: _navItem(
                       0, Icons.home_rounded, Icons.home_outlined, 'Beranda')),
-              // Scanner (center – elevated style)
-              Expanded(child: _scannerNavItem()),
+              // Empty space for FAB
+              const Expanded(child: SizedBox()),
               // Quiz
               Expanded(
                   child: _navItem(
-                      2, Icons.quiz_rounded, Icons.quiz_outlined, 'Quiz')),
+                      2, Icons.quiz_rounded, Icons.quiz_outlined, 'Evaluasi')),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -439,57 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _scannerNavItem() {
-    final isActive = _currentNavIndex == 1;
-    return GestureDetector(
-      onTap: () => setState(() => _currentNavIndex = 1),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, AppColors.secondary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: isActive
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.5),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.25),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-            ),
-            child: const Icon(Icons.qr_code_scanner_rounded,
-                color: Colors.white, size: 24),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'Scanner',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-              color: isActive ? AppColors.primary : AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildPdfCard(
     BuildContext context, {

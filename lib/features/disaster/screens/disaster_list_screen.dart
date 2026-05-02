@@ -20,7 +20,7 @@ class _DisasterListScreenState extends State<DisasterListScreen> {
     'Geologi',
     'Hidrologi',
     'Meteorologi',
-    'Iklim'
+    'Klimatologi'
   ];
 
   @override

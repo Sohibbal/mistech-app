@@ -158,7 +158,7 @@ class DisasterRepository {
         iconUrl: '',
         imageUrl:
             'https://images.unsplash.com/photo-1509909756405-be0199881695?w=800',
-        category: 'iklim',
+        category: 'klimatologi',
         level: 3,
         phases: _getMockPhases('8'),
       ),

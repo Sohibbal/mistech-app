@@ -15,6 +15,7 @@ import '../../features/profile/screens/name_input_screen.dart';
 import '../../features/news/screens/news_list_screen.dart';
 import '../../features/news/screens/news_detail_screen.dart';
 import '../../data/models/news_model.dart';
+import '../../features/scanner/screens/scanner_screen.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -57,6 +58,11 @@ class AppRouter {
         path: '/home',
         name: 'home',
         pageBuilder: (c, s) => _slide(const HomeScreen(), s),
+      ),
+      GoRoute(
+        path: '/scanner',
+        name: 'scanner',
+        pageBuilder: (c, s) => _slide(const ScannerScreen(), s),
       ),
       GoRoute(
         path: '/disasters',

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/services.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/disaster_provider.dart';
 import '../../../data/models/disaster_model.dart';
@@ -244,6 +246,34 @@ class _DisasterDetailScreenState extends State<DisasterDetailScreen> {
                 ),
 
                 const SizedBox(height: 24),
+
+                if (disaster.name.toLowerCase().contains('banjir')) ...[
+                  const Text(
+                    'Mini Game: Siap Siaga Banjir',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const _MiniGameView(assetPath: 'assets/html/minigame_banjir.html'),
+                  const SizedBox(height: 24),
+                ] else if (disaster.name.toLowerCase().contains('kebakaran')) ...[
+                  const Text(
+                    'Mini Game: Siap Siaga Kebakaran Hutan',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const _MiniGameView(assetPath: 'assets/html/minigame_kebakaran_hutan.html'),
+                  const SizedBox(height: 24),
+                ],
               ],
             ),
           ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
@@ -253,59 +283,62 @@ class _DisasterDetailScreenState extends State<DisasterDetailScreen> {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => context.pop(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side:
-                          const BorderSide(color: AppColors.border, width: 1.5),
-                      foregroundColor: AppColors.textPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+            child: SafeArea(
+              top: false,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => context.pop(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side:
+                            const BorderSide(color: AppColors.border, width: 1.5),
+                        foregroundColor: AppColors.textPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      'Kembali',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => context.push(
-                      '/disasters/${disaster.id}/phase/pra',
-                      extra: {
-                        'disasterName': disaster.name,
-                        'phase': 'pra',
-                      },
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Text(
-                      'Mulai Belajar',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: Colors.white,
+                      child: const Text(
+                        'Kembali',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => context.push(
+                        '/disasters/${disaster.id}/phase/pra',
+                        extra: {
+                          'disasterName': disaster.name,
+                          'phase': 'pra',
+                        },
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Mulai Belajar',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -423,6 +456,60 @@ class _PhaseCard extends StatelessWidget {
           .animate(delay: Duration(milliseconds: 100 * index))
           .fadeIn(duration: 300.ms)
           .slideX(begin: 0.1, end: 0, duration: 300.ms),
+    );
+  }
+}
+
+class _MiniGameView extends StatefulWidget {
+  final String assetPath;
+
+  const _MiniGameView({required this.assetPath});
+
+  @override
+  State<_MiniGameView> createState() => _MiniGameViewState();
+}
+
+class _MiniGameViewState extends State<_MiniGameView> {
+  late final WebViewController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0x00000000));
+    _loadLocalHtml();
+  }
+
+  Future<void> _loadLocalHtml() async {
+    try {
+      final String htmlContent =
+          await rootBundle.loadString(widget.assetPath);
+      _controller.loadHtmlString(htmlContent);
+    } catch (e) {
+      debugPrint("Gagal meload HTML minigame: $e");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 680,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: WebViewWidget(controller: _controller),
     );
   }
 }

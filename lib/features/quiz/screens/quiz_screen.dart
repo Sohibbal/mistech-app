@@ -121,97 +121,100 @@ class _QuizScreenState extends State<QuizScreen> {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Question dots
-          _QuestionDots(
-            total: quiz.questions.length,
-            current: prov.currentQuestionIndex,
-            answers: prov.selectedAnswers,
-            onTap: (i) {
-              prov.goToQuestion(i);
-              _pageController.animateToPage(i,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut);
-            },
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              // Back button
-              if (prov.currentQuestionIndex > 0)
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Question dots
+            _QuestionDots(
+              total: quiz.questions.length,
+              current: prov.currentQuestionIndex,
+              answers: prov.selectedAnswers,
+              onTap: (i) {
+                prov.goToQuestion(i);
+                _pageController.animateToPage(i,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut);
+              },
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                // Back button
+                if (prov.currentQuestionIndex > 0)
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        prov.previousQuestion();
+                        _pageController.previousPage(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: AppColors.border),
+                        foregroundColor: AppColors.textPrimary,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: const Text('Sebelumnya',
+                          style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                if (prov.currentQuestionIndex > 0) const SizedBox(width: 12),
+
+                // Next / Submit
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      prov.previousQuestion();
-                      _pageController.previousPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut);
-                    },
-                    style: OutlinedButton.styleFrom(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: hasAnswer
+                        ? () async {
+                            if (isLast) {
+                              if (prov.isAllAnswered) {
+                                await _submitQuiz(prov);
+                              } else {
+                                _showUnansweredDialog(prov);
+                              }
+                            } else {
+                              prov.nextQuestion();
+                              _pageController.nextPage(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut);
+                            }
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: AppColors.border),
-                      foregroundColor: AppColors.textPrimary,
+                      backgroundColor: AppColors.primary,
+                      disabledBackgroundColor: AppColors.primarySurface,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: const Text('Sebelumnya',
-                        style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w600)),
-                  ),
-                ),
-              if (prov.currentQuestionIndex > 0) const SizedBox(width: 12),
-
-              // Next / Submit
-              Expanded(
-                flex: 2,
-                child: ElevatedButton(
-                  onPressed: hasAnswer
-                      ? () async {
-                          if (isLast) {
-                            if (prov.isAllAnswered) {
-                              await _submitQuiz(prov);
-                            } else {
-                              _showUnansweredDialog(prov);
-                            }
-                          } else {
-                            prov.nextQuestion();
-                            _pageController.nextPage(
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut);
-                          }
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: AppColors.primary,
-                    disabledBackgroundColor: AppColors.primarySurface,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
-                        )
-                      : Text(
-                          isLast ? 'Selesai & Kirim' : 'Berikutnya',
-                          style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: Colors.white,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2),
+                          )
+                        : Text(
+                            isLast ? 'Selesai & Kirim' : 'Berikutnya',
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -544,37 +547,63 @@ class _QuestionDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 28,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: total,
-        itemBuilder: (context, i) {
-          final isCurrent = i == current;
-          final isAnswered = answers.containsKey(i);
-          Color color;
-          if (isCurrent) {
-            color = AppColors.primary;
-          } else if (isAnswered) {
-            color = AppColors.success;
-          } else {
-            color = AppColors.border;
-          }
-          return GestureDetector(
+    return Row(
+      children: List.generate(total, (i) {
+        final isCurrent = i == current;
+        final isAnswered = answers.containsKey(i);
+        Color bgColor;
+        Color textColor;
+        Color borderColor;
+
+        if (isCurrent) {
+          bgColor = AppColors.primary;
+          textColor = Colors.white;
+          borderColor = AppColors.primary;
+        } else if (isAnswered) {
+          bgColor = AppColors.success;
+          textColor = Colors.white;
+          borderColor = AppColors.success;
+        } else {
+          bgColor = Colors.white;
+          textColor = AppColors.textSecondary;
+          borderColor = AppColors.border;
+        }
+
+        return Expanded(
+          child: GestureDetector(
             onTap: () => onTap(i),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: isCurrent ? 22 : 10,
-              height: 10,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              height: 36,
               decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(100),
+                color: bgColor,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: borderColor, width: 1.5),
+                boxShadow: isCurrent
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        )
+                      ]
+                    : null,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '${i + 1}',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
               ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      }),
     );
   }
 }

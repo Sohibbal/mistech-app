@@ -133,7 +133,7 @@ class _QuizListScreenState extends State<QuizListScreen> {
               ),
               const SizedBox(width: 12),
               const Text(
-                'Quiz Bencana',
+                'Evaluasi',
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 22,

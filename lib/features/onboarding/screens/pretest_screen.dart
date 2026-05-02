@@ -297,35 +297,145 @@ class _PretestScreenState extends State<PretestScreen> {
                 ),
               ],
             ),
-            child: SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _selectedAnswers.containsKey(_currentIndex)
-                    ? () {
-                        if (_currentIndex < _questions.length - 1) {
-                          _nextQuestion();
-                        } else {
-                          _finishPretest();
-                        }
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: List.generate(_questions.length, (i) {
+                      final isCurrent = i == _currentIndex;
+                      final isAnswered = _selectedAnswers.containsKey(i);
+                      Color bgColor;
+                      Color textColor;
+                      Color borderColor;
+
+                      if (isCurrent) {
+                        bgColor = AppColors.primary;
+                        textColor = Colors.white;
+                        borderColor = AppColors.primary;
+                      } else if (isAnswered) {
+                        bgColor = AppColors.success;
+                        textColor = Colors.white;
+                        borderColor = AppColors.success;
+                      } else {
+                        bgColor = Colors.white;
+                        textColor = AppColors.textSecondary;
+                        borderColor = AppColors.border;
                       }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  disabledBackgroundColor: Colors.grey.shade300,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            _pageController.animateToPage(
+                              i,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                            setState(() {
+                              _currentIndex = i;
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: bgColor,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: borderColor, width: 1.5),
+                              boxShadow: isCurrent
+                                  ? [
+                                      BoxShadow(
+                                        color: AppColors.primary.withOpacity(0.3),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      )
+                                    ]
+                                  : null,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '${i + 1}',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: textColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
                   ),
-                ),
-                child: Text(
-                  _currentIndex < _questions.length - 1 ? 'Selanjutnya' : 'Selesai Pre-Test',
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      if (_currentIndex > 0)
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              _pageController.previousPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                              setState(() {
+                                _currentIndex--;
+                              });
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: const BorderSide(color: AppColors.border),
+                              foregroundColor: AppColors.textPrimary,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14)),
+                            ),
+                            child: const Text('Sebelumnya',
+                                style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      if (_currentIndex > 0) const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: SizedBox(
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: _selectedAnswers.containsKey(_currentIndex)
+                                ? () {
+                                    if (_currentIndex < _questions.length - 1) {
+                                      _nextQuestion();
+                                    } else {
+                                      _finishPretest();
+                                    }
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              disabledBackgroundColor: Colors.grey.shade300,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(
+                              _currentIndex < _questions.length - 1
+                                  ? 'Selanjutnya'
+                                  : 'Selesai Pre-Test',
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                ],
               ),
             ),
           ),

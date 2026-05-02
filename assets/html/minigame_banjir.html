@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Siap Siaga Banjir</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1A3A5C;
+            --secondary: #4A9EBF;
+            --accent: #F5C542;
+            --success: #2E7D32;
+            --error: #D32F2F;
+            --bg: #F5F7FA;
+            --card-bg: #FFFFFF;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background-color: var(--primary);
+            color: white;
+            text-align: center;
+            padding: 10px 10px 25px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+            margin-bottom: 2px;
+            color: var(--accent);
+        }
+
+        .header p {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+
+
+
+        .game-area {
+            flex: 1;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow: hidden;
+        }
+
+        .zones-container {
+            display: flex;
+            gap: 8px;
+            flex: 1.2;
+            min-height: 0;
+        }
+
+        .zone {
+            flex: 1;
+            border: 2px dashed var(--secondary);
+            border-radius: 8px;
+            padding: 4px;
+            background-color: rgba(74, 158, 191, 0.05);
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            position: relative;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .zone.active {
+            background-color: rgba(245, 197, 66, 0.15);
+            border-color: var(--accent);
+        }
+
+        .zone-title {
+            font-family: 'Poppins', sans-serif;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 2px;
+            padding-bottom: 2px;
+            border-bottom: 1px solid rgba(26, 58, 92, 0.1);
+            flex-shrink: 0;
+        }
+
+        .pool {
+            flex: 1;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 6px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-content: flex-start;
+            justify-content: center;
+            transition: opacity 0.3s;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        .pool.empty {
+            opacity: 0.5;
+        }
+
+        .pool-title {
+            width: 100%;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 2px solid transparent;
+            border-radius: 4px;
+            padding: 6px 8px;
+            width: calc(50% - 2px); /* in pool */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            text-align: left;
+            user-select: none;
+            justify-content: flex-start;
+            gap: 8px;
+            min-height: 55px;
+        }
+
+        .zone .card {
+            width: 100%;
+            padding: 4px;
+            flex-direction: row;
+            gap: 6px;
+            align-items: center;
+            min-height: 36px;
+        }
+
+        .zone .card .emoji {
+            font-size: 20px;
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+
+        .zone .card .text {
+            text-align: left;
+            flex: 1;
+            font-size: 10px;
+            line-height: 1.2;
+            font-weight: 500;
+        }
+
+        .card.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(245, 197, 66, 0.3);
+            transform: scale(1.02);
+            z-index: 10;
+        }
+
+        .card .emoji {
+            font-size: 24px;
+            margin-bottom: 0;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .card .text {
+            font-size: 11px;
+            line-height: 1.2;
+            font-weight: 500;
+        }
+
+        .card.correct {
+            border-color: var(--success);
+            background-color: rgba(46, 125, 50, 0.05);
+        }
+
+        .card.wrong {
+            border-color: var(--error);
+            background-color: rgba(211, 47, 47, 0.05);
+        }
+
+        .explanation {
+            font-size: 9px;
+            color: var(--error);
+            margin-top: 4px;
+            font-weight: 700;
+            display: none;
+            line-height: 1.2;
+            text-align: left;
+            width: 100%;
+        }
+
+        .card.wrong .explanation {
+            display: block;
+        }
+
+        .actions {
+            flex-shrink: 0;
+            margin-top: 0;
+            padding-bottom: 0;
+        }
+
+        button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .btn-check {
+            background-color: var(--secondary);
+            color: white;
+        }
+
+        .btn-check:disabled {
+            background-color: #ccc;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .btn-reset {
+            background-color: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            margin-top: 10px;
+            display: none;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(26, 58, 92, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .overlay.show {
+            display: flex;
+            animation: fadeIn 0.3s;
+        }
+
+        .score-box {
+            background: white;
+            color: var(--primary);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 340px;
+            transform: scale(0.9);
+            animation: popIn 0.4s forwards;
+        }
+
+        .score-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: 800;
+            margin: 0 auto 20px;
+            color: white;
+            border: 5px solid rgba(255,255,255,0.5);
+            box-shadow: 0 5px 15px rgba(245, 197, 66, 0.4);
+        }
+
+        .score-msg {
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .score-btn {
+            background: var(--primary);
+            color: white;
+            margin-top: 20px;
+        }
+
+        /* Animations */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        .anim-shake { animation: shake 0.5s; }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .anim-bounce { animation: bounce 0.5s; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes popIn {
+            to { transform: scale(1); }
+        }
+
+        /* Confetti */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            z-index: 1000;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Siap Siaga Banjir</h1>
+        <p>Pilih kartu lalu tap ke kotak yang tepat!</p>
+    </div>
+
+    <div class="game-area">
+        <div class="zones-container">
+            <div class="zone" id="zone-pra" onclick="selectZone('pra')">
+                <div class="zone-title">PRA-BENCANA</div>
+            </div>
+            <div class="zone" id="zone-pasca" onclick="selectZone('pasca')">
+                <div class="zone-title">PASCA-BENCANA</div>
+            </div>
+        </div>
+
+        <div class="pool" id="pool">
+            <div class="pool-title">Kartu Tersedia</div>
+            <!-- Cards will be generated here -->
+        </div>
+
+        <div class="actions">
+            <button class="btn-check" id="btnCheck" onclick="checkAnswers()" disabled>CEK JAWABAN</button>
+            <button class="btn-reset" id="btnReset" onclick="initGame()">Main Lagi</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="resultOverlay">
+        <div class="score-box">
+            <div class="score-circle" id="scoreCircle">0</div>
+            <h2 class="score-msg" id="scoreMsg">Bagus!</h2>
+            <p id="scoreSubMsg">Terus tingkatkan pengetahuanmu.</p>
+            <button class="score-btn" onclick="closeOverlay()">Tutup & Lihat Hasil</button>
+        </div>
+    </div>
+
+    <script>
+        const cardsData = [
+            { id: 1, emoji: "🏚️", text: "Memindahkan barang ke tempat tinggi", type: "pra" },
+            { id: 2, emoji: "📋", text: "Menyiapkan tas darurat (P3K, dokumen, senter)", type: "pra" },
+            { id: 3, emoji: "📱", text: "Memantau info cuaca & peringatan dini BMKG", type: "pra" },
+            { id: 4, emoji: "🚧", text: "Membersihkan saluran drainase sekitar rumah", type: "pra" },
+            { id: 5, emoji: "🧹", text: "Membersihkan lumpur dan sampah sisa banjir", type: "pasca" },
+            { id: 6, emoji: "💉", text: "Vaksinasi & pemeriksaan kesehatan pasca banjir", type: "pasca" },
+            { id: 7, emoji: "🏥", text: "Mendatangi posko pengungsian terdekat", type: "pasca" },
+            { id: 8, emoji: "📝", text: "Melaporkan kerusakan ke RT/kelurahan", type: "pasca" }
+        ];
+
+        let state = {
+            selectedCardId: null,
+            placements: {}, // id -> 'pool', 'pra', 'pasca'
+            isChecked: false
+        };
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function initGame() {
+            state.selectedCardId = null;
+            state.placements = {};
+            state.isChecked = false;
+            
+            cardsData.forEach(c => state.placements[c.id] = 'pool');
+            
+            document.getElementById('btnCheck').disabled = true;
+            document.getElementById('btnCheck').style.display = 'block';
+            document.getElementById('btnReset').style.display = 'none';
+            document.getElementById('resultOverlay').classList.remove('show');
+
+            render();
+        }
+
+        function createCardElement(card) {
+            const el = document.createElement('div');
+            el.className = 'card';
+            if (state.selectedCardId === card.id) el.classList.add('selected');
+            
+            let expText = card.type === 'pra' 
+                ? "Tindakan ini dilakukan SEBELUM banjir terjadi untuk meminimalkan risiko."
+                : "Tindakan ini dilakukan SETELAH banjir surut untuk pemulihan.";
+
+            el.innerHTML = `
+                <div class="emoji">${card.emoji}</div>
+                <div class="text">${card.text}</div>
+                <div class="explanation">${expText}</div>
+            `;
+            
+            el.onclick = (e) => {
+                e.stopPropagation();
+                if (state.isChecked) return;
+                
+                if (state.placements[card.id] !== 'pool') {
+                    // move back to pool
+                    state.placements[card.id] = 'pool';
+                    state.selectedCardId = null;
+                } else {
+                    if (state.selectedCardId === card.id) {
+                        state.selectedCardId = null; // deselect
+                    } else {
+                        state.selectedCardId = card.id; // select
+                    }
+                }
+                render();
+            };
+            return el;
+        }
+
+        function render() {
+            const pool = document.getElementById('pool');
+            const zonePra = document.getElementById('zone-pra');
+            const zonePasca = document.getElementById('zone-pasca');
+            
+            // clear old cards
+            pool.querySelectorAll('.card').forEach(e => e.remove());
+            zonePra.querySelectorAll('.card').forEach(e => e.remove());
+            zonePasca.querySelectorAll('.card').forEach(e => e.remove());
+
+            document.querySelectorAll('.zone').forEach(z => z.classList.remove('active'));
+            if (state.selectedCardId) {
+                zonePra.classList.add('active');
+                zonePasca.classList.add('active');
+            }
+
+            let poolCount = 0;
+            
+            cardsData.forEach(card => {
+                const el = createCardElement(card);
+                const loc = state.placements[card.id];
+                
+                if (loc === 'pool') {
+                    pool.appendChild(el);
+                    poolCount++;
+                } else if (loc === 'pra') {
+                    zonePra.appendChild(el);
+                } else if (loc === 'pasca') {
+                    zonePasca.appendChild(el);
+                }
+            });
+
+            if (poolCount === 0) {
+                pool.classList.add('empty');
+                if(!state.isChecked) document.getElementById('btnCheck').disabled = false;
+            } else {
+                pool.classList.remove('empty');
+                document.getElementById('btnCheck').disabled = true;
+            }
+        }
+
+        function selectZone(zoneName) {
+            if (state.isChecked) return;
+            if (state.selectedCardId !== null) {
+                state.placements[state.selectedCardId] = zoneName;
+                state.selectedCardId = null;
+                render();
+            }
+        }
+
+        function checkAnswers() {
+            state.isChecked = true;
+            state.selectedCardId = null;
+            document.getElementById('btnCheck').style.display = 'none';
+            document.getElementById('btnReset').style.display = 'block';
+            
+            let correctCount = 0;
+            
+            cardsData.forEach(card => {
+                const loc = state.placements[card.id];
+                let el = null;
+                
+                const container = loc === 'pra' ? document.getElementById('zone-pra') : document.getElementById('zone-pasca');
+                const cards = container.querySelectorAll('.card');
+                cards.forEach(c => {
+                    if(c.innerHTML.includes(card.text)) el = c;
+                });
+                
+                if (loc === card.type) {
+                    correctCount++;
+                    if(el) {
+                        el.classList.add('correct', 'anim-bounce');
+                    }
+                } else {
+                    if(el) {
+                        el.classList.add('wrong', 'anim-shake');
+                    }
+                }
+            });
+
+            setTimeout(() => {
+                showScore(correctCount, cardsData.length);
+            }, 800);
+        }
+
+        function showScore(correct, total) {
+            const overlay = document.getElementById('resultOverlay');
+            const circle = document.getElementById('scoreCircle');
+            const msg = document.getElementById('scoreMsg');
+            const sub = document.getElementById('scoreSubMsg');
+            
+            const score = Math.round((correct / total) * 100);
+            circle.textContent = score;
+            
+            if (score === 100) {
+                msg.textContent = "Sempurna!";
+                sub.textContent = "Kamu sangat siap menghadapi bencana banjir!";
+                createConfetti();
+            } else if (score >= 70) {
+                msg.textContent = "Kerja Bagus!";
+                sub.textContent = "Kamu sudah cukup paham, yuk pelajari sisanya.";
+            } else {
+                msg.textContent = "Jangan Menyerah!";
+                sub.textContent = "Ayo baca penjelasan di kartu merah dan coba lagi.";
+            }
+            
+            overlay.classList.add('show');
+        }
+
+        function closeOverlay() {
+            document.getElementById('resultOverlay').classList.remove('show');
+        }
+
+        function createConfetti() {
+            const colors = ['#4A9EBF', '#F5C542', '#2E7D32', '#D32F2F', '#ffffff'];
+            for(let i=0; i<50; i++) {
+                let conf = document.createElement('div');
+                conf.className = 'confetti';
+                conf.style.left = Math.random() * 100 + 'vw';
+                conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                conf.style.top = '-10px';
+                
+                document.body.appendChild(conf);
+                
+                let speed = Math.random() * 3 + 2;
+                let rotate = Math.random() * 360;
+                let rotateSpeed = Math.random() * 10 - 5;
+                
+                let y = -10;
+                function fall() {
+                    y += speed;
+                    rotate += rotateSpeed;
+                    conf.style.top = y + 'px';
+                    conf.style.transform = `rotate(${rotate}deg)`;
+                    if(y < window.innerHeight) {
+                        requestAnimationFrame(fall);
+                    } else {
+                        conf.remove();
+                    }
+                }
+                requestAnimationFrame(fall);
+            }
+        }
+
+        shuffle(cardsData);
+        initGame();
+    </script>
+</body>
+</html>
