@@ -209,20 +209,7 @@
             background-color: rgba(211, 47, 47, 0.05);
         }
 
-        .explanation {
-            font-size: 9px;
-            color: var(--error);
-            margin-top: 4px;
-            font-weight: 700;
-            display: none;
-            line-height: 1.2;
-            text-align: left;
-            width: 100%;
-        }
 
-        .card.wrong .explanation {
-            display: block;
-        }
 
         .actions {
             flex-shrink: 0;
@@ -433,14 +420,9 @@
             el.className = 'card';
             if (state.selectedCardId === card.id) el.classList.add('selected');
             
-            let expText = card.type === 'pra' 
-                ? "Tindakan ini dilakukan SEBELUM banjir terjadi untuk meminimalkan risiko."
-                : "Tindakan ini dilakukan SETELAH banjir surut untuk pemulihan.";
-
             el.innerHTML = `
                 <div class="emoji">${card.emoji}</div>
                 <div class="text">${card.text}</div>
-                <div class="explanation">${expText}</div>
             `;
             
             el.onclick = (e) => {
@@ -566,7 +548,7 @@
                 sub.textContent = "Kamu sudah cukup paham, yuk pelajari sisanya.";
             } else {
                 msg.textContent = "Jangan Menyerah!";
-                sub.textContent = "Ayo baca penjelasan di kartu merah dan coba lagi.";
+                sub.textContent = "Ayo coba lagi.";
             }
             
             overlay.classList.add('show');

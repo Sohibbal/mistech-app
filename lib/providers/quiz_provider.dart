@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../core/network/api_client.dart';
 import '../data/models/quiz_model.dart';
 import '../data/repositories/quiz_repository.dart';
 
@@ -6,6 +8,7 @@ enum QuizLoadState { idle, loading, loaded, error }
 
 class QuizProvider extends ChangeNotifier {
   final QuizRepository _repo = QuizRepository();
+  final ApiClient _client = ApiClient.instance;
 
   QuizLoadState _listState = QuizLoadState.idle;
   QuizLoadState _detailState = QuizLoadState.idle;
@@ -161,12 +164,34 @@ class QuizProvider extends ChangeNotifier {
     _isSubmitted = true;
     _lastResult = result;
 
-    // Persist result
+    // Persist result locally
     await _repo.saveQuizResult(
       _currentQuiz!.disasterId,
       result.scorePercent,
       _currentQuiz!.version,
     );
+
+    // Send result to API
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final studentName = prefs.getString('user_name') ?? 'Anonim';
+      
+      final answersPayload = answers.map((a) => {
+        "question_id": a.questionId,
+        "is_correct": a.isCorrect,
+      }).toList();
+
+      await _client.post('/quiz-attempts', data: {
+        "quiz_id": _currentQuiz!.id,
+        "student_name": studentName,
+        "type": "evaluation",
+        "score": result.scorePercent,
+        "total_questions": result.totalQuestions,
+        "answers": answersPayload,
+      });
+    } catch (e) {
+      debugPrint("Failed to submit evaluation to server: $e");
+    }
 
     // Refresh progress map
     _progressMap[_currentQuiz!.disasterId] =

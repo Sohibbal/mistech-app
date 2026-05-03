@@ -72,18 +72,41 @@ class _PretestScreenState extends State<PretestScreen> {
   }
 
   Future<void> _finishPretest() async {
+    setState(() => _isSubmitted = true);
+
     int correctCount = 0;
+    List<Map<String, dynamic>> answersPayload = [];
+
     for (int i = 0; i < _questions.length; i++) {
       final q = _questions[i];
       final correctIndex = q['correct_index'] as int? ?? 0;
       final userAns = _selectedAnswers[i];
-      if (userAns == correctIndex) correctCount++;
+      final isCorrect = userAns == correctIndex;
+      if (isCorrect) correctCount++;
+      
+      answersPayload.add({
+        "question_id": q['id'],
+        "is_correct": isCorrect,
+      });
     }
 
     final score = _questions.isEmpty ? 0 : ((correctCount / _questions.length) * 100).round();
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('pretest_done', true);
+    final studentName = prefs.getString('user_name') ?? 'Anonim';
+
+    try {
+      await _client.post('/quiz-attempts', data: {
+        "student_name": studentName,
+        "type": "pretest",
+        "score": score,
+        "total_questions": _questions.length,
+        "answers": answersPayload,
+      });
+    } catch (e) {
+      debugPrint("Failed to submit pretest: $e");
+    }
 
     if (mounted) {
       showDialog(
