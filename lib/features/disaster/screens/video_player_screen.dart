@@ -55,18 +55,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           backgroundColor: AppColors.primarySurface,
           bufferedColor: AppColors.primarySurface2,
         ),
-        placeholder: Container(color: Colors.black),
+        placeholder: Container(color: AppColors.background),
         errorBuilder: (context, errorMessage) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_rounded, color: Colors.white, size: 48),
+                const Icon(Icons.error_rounded, color: AppColors.error, size: 48),
                 const SizedBox(height: 12),
                 Text(
                   'Gagal memuat video',
                   style: const TextStyle(
-                      color: Colors.white, fontFamily: 'Poppins'),
+                      color: AppColors.textSecondary, fontFamily: 'Poppins'),
                 ),
               ],
             ),
@@ -98,12 +98,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: AppColors.surface,
         leading: IconButton(
           icon:
-              const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+              const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -111,13 +111,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           style: const TextStyle(
             fontFamily: 'Poppins',
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: AppColors.textPrimary,
             fontSize: 16,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       body: Column(
         children: [
@@ -130,7 +130,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           // Video Info
           Expanded(
             child: Container(
-              color: Colors.black,
+              color: AppColors.background,
               child: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
@@ -140,7 +140,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       fontFamily: 'Poppins',
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -163,7 +163,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   ),
                   if (description.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    const Divider(color: Colors.white12),
+                    const Divider(color: AppColors.border),
                     const SizedBox(height: 12),
                     const Text(
                       'Deskripsi',
@@ -171,7 +171,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         fontFamily: 'Poppins',
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -180,7 +180,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       style: const TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 13,
-                        color: Colors.white70,
+                        color: AppColors.textSecondary,
                         height: 1.6,
                       ),
                     ),
@@ -208,7 +208,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           children: [
             const Icon(
               Icons.error_outline_rounded,
-              color: Colors.white54,
+              color: AppColors.textTertiary,
               size: 60,
             ),
             const SizedBox(height: 12),
@@ -217,7 +217,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Poppins',
-                color: Colors.white54,
+                color: AppColors.textSecondary,
                 fontSize: 14,
               ),
             ),

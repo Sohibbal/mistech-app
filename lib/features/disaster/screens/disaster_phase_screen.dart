@@ -558,16 +558,18 @@ class _VideoCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Center(
-                    child: Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        shape: BoxShape.circle,
+                  Positioned.fill(
+                    child: Center(
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.play_arrow_rounded,
+                            color: AppColors.saatBencana, size: 30),
                       ),
-                      child: const Icon(Icons.play_arrow_rounded,
-                          color: AppColors.saatBencana, size: 30),
                     ),
                   ),
                   Positioned(

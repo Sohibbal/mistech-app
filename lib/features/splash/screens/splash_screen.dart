@@ -163,7 +163,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ),
                   Text(
-                    'MiSTech',
+                    'GeoSentra Teams',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -185,15 +185,11 @@ class _SplashScreenState extends State<SplashScreen>
 
   Widget _buildLogoCard() {
     return Container(
-      width: 160,
-      height: 190,
+      width: 180,
+      height: 180,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.25),
-          width: 1.5,
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(40),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
@@ -202,52 +198,15 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ],
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Shield Icon
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.shield_rounded,
-              color: AppColors.primary,
-              size: 48,
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Disaster icons row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _disasterIcon(Icons.water_rounded),
-              const SizedBox(width: 12),
-              _disasterIcon(Icons.volcano_rounded),
-              const SizedBox(width: 12),
-              _disasterIcon(Icons.vibration_rounded),
-            ],
-          ),
-        ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(40),
+        child: Image.asset(
+          'assets/icons/logo.png',
+          width: 180,
+          height: 180,
+          fit: BoxFit.cover,
+        ),
       ),
-    );
-  }
-
-  Widget _disasterIcon(IconData icon) {
-    return Icon(
-      icon,
-      color: Colors.white.withOpacity(0.7),
-      size: 22,
     );
   }
 }
