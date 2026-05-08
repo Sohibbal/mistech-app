@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/quiz_provider.dart';
 import '../../../data/models/quiz_model.dart';
 
 class QuizScreen extends StatefulWidget {
-  final String disasterId;
   final Map<String, dynamic>? extraData;
-  const QuizScreen({super.key, required this.disasterId, this.extraData});
+  const QuizScreen({super.key, this.extraData});
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -17,30 +17,42 @@ class QuizScreen extends StatefulWidget {
 
 class _QuizScreenState extends State<QuizScreen> {
   final PageController _pageController = PageController();
+  final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<QuizProvider>().loadQuizDetail(widget.disasterId);
+      context.read<QuizProvider>().loadQuiz();
     });
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
+  }
+
+  Future<void> _playSound(bool isCorrect) async {
+    try {
+      final path = isCorrect ? 'audio/correct.mp3' : 'audio/incorrect.mp3';
+      await _audioPlayer.stop();
+      await _audioPlayer.play(AssetSource(path));
+    } catch (e) {
+      debugPrint("Error playing sound: $e");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final disasterName = widget.extraData?['disasterName'] ?? 'Quiz';
+    final quizTitle = widget.extraData?['quizTitle'] ?? 'Evaluasi Bencana';
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(disasterName),
+        title: Text(quizTitle),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           onPressed: () => _confirmExit(context),
@@ -68,7 +80,7 @@ class _QuizScreenState extends State<QuizScreen> {
       ),
       body: Consumer<QuizProvider>(
         builder: (context, prov, _) {
-          if (prov.isDetailLoading) {
+          if (prov.isLoading) {
             return const Center(
                 child: CircularProgressIndicator(color: AppColors.primary));
           }
@@ -91,6 +103,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       totalQuestions: quiz.questions.length,
                       selectedIndex: prov.getSelectedAnswer(index),
                       isSubmitted: prov.isSubmitted,
+                      isChecked: prov.isQuestionChecked(index),
                       onSelect: (optIndex) =>
                           prov.selectAnswer(index, optIndex),
                     );
@@ -166,50 +179,79 @@ class _QuizScreenState extends State<QuizScreen> {
                   ),
                 if (prov.currentQuestionIndex > 0) const SizedBox(width: 12),
 
-                // Next / Submit
+                // Next / Submit / Check
                 Expanded(
                   flex: 2,
-                  child: ElevatedButton(
-                    onPressed: hasAnswer
-                        ? () async {
-                            if (isLast) {
-                              if (prov.isAllAnswered) {
-                                await _submitQuiz(prov);
-                              } else {
-                                _showUnansweredDialog(prov);
-                              }
-                            } else {
-                              prov.nextQuestion();
-                              _pageController.nextPage(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut);
-                            }
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: AppColors.primary,
-                      disabledBackgroundColor: AppColors.primarySurface,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
-                          )
-                        : Text(
-                            isLast ? 'Selesai & Kirim' : 'Berikutnya',
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: Colors.white,
-                            ),
+                  child: () {
+                    final isChecked = prov.isQuestionChecked(prov.currentQuestionIndex);
+                    
+                    if (hasAnswer && !isChecked && !prov.isSubmitted) {
+                      // Show Check Answer Button
+                      return ElevatedButton(
+                        onPressed: () {
+                          final isCorrect = prov.checkAnswer(prov.currentQuestionIndex);
+                          _playSound(isCorrect);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: AppColors.secondary, // Different color for Check
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: const Text(
+                          'Cek Jawaban',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: Colors.white,
                           ),
-                  ),
+                        ),
+                      );
+                    }
+
+                    return ElevatedButton(
+                      onPressed: (hasAnswer || prov.isSubmitted)
+                          ? () async {
+                              if (isLast) {
+                                if (prov.isAllAnswered) {
+                                  await _submitQuiz(prov);
+                                } else {
+                                  _showUnansweredDialog(prov);
+                                }
+                              } else {
+                                prov.nextQuestion();
+                                _pageController.nextPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut);
+                              }
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: AppColors.primary,
+                        disabledBackgroundColor: AppColors.primarySurface,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2),
+                            )
+                          : Text(
+                              isLast ? 'Selesai & Kirim' : 'Berikutnya',
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: Colors.white,
+                              ),
+                            ),
+                    );
+                  }(),
                 ),
               ],
             ),
@@ -309,6 +351,7 @@ class _QuestionCard extends StatelessWidget {
   final int totalQuestions;
   final int? selectedIndex;
   final bool isSubmitted;
+  final bool isChecked;
   final ValueChanged<int> onSelect;
 
   const _QuestionCard({
@@ -317,6 +360,7 @@ class _QuestionCard extends StatelessWidget {
     required this.totalQuestions,
     required this.selectedIndex,
     required this.isSubmitted,
+    required this.isChecked,
     required this.onSelect,
   });
 
@@ -373,21 +417,29 @@ class _QuestionCard extends StatelessWidget {
           ...question.options.asMap().entries.map((entry) {
             final i = entry.key;
             final opt = entry.value;
-            final isSelected = selectedIndex == i;
             final isCorrect = i == question.correctIndex;
+            final showFeedback = isSubmitted || isChecked;
             return _OptionTile(
               label: String.fromCharCode(65 + i), // A, B, C, D
               text: opt,
-              isSelected: isSelected,
-              isCorrect: isSubmitted ? isCorrect : null,
-              isWrongSelected: isSubmitted && isSelected && !isCorrect,
-              onTap: isSubmitted ? null : () => onSelect(i),
+              isSelected: selectedIndex == i,
+              isCorrect: showFeedback ? isCorrect : null,
+              isWrongSelected: showFeedback && (selectedIndex == i) && !isCorrect,
+              onTap: showFeedback ? null : () => onSelect(i),
               index: i,
             );
           }),
 
-          // Explanation (after submit)
-          if (isSubmitted && question.explanation != null) ...[
+          // Visual Feedback for Check Answer
+          if (isChecked && !isSubmitted) ...[
+            const SizedBox(height: 20),
+            _CheckFeedback(
+              isCorrect: selectedIndex == question.correctIndex,
+            ),
+          ],
+
+          // Explanation (after submit or check)
+          if ((isSubmitted || isChecked) && question.explanation != null) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(14),
@@ -605,5 +657,78 @@ class _QuestionDots extends StatelessWidget {
         );
       }),
     );
+  }
+}
+
+class _CheckFeedback extends StatelessWidget {
+  final bool isCorrect;
+
+  const _CheckFeedback({required this.isCorrect});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isCorrect ? AppColors.successLight : AppColors.errorLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isCorrect ? AppColors.success : AppColors.error,
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isCorrect ? AppColors.success : AppColors.error,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isCorrect ? Icons.check_rounded : Icons.close_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
+          ).animate().scale(curve: Curves.elasticOut),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isCorrect ? 'Jawaban Benar!' : 'Jawaban Kurang Tepat',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: isCorrect ? AppColors.success : AppColors.error,
+                  ),
+                ),
+                Text(
+                  isCorrect
+                      ? 'Hebat! Kamu memahami materi ini dengan baik.'
+                      : 'Jangan menyerah! Coba pelajari lagi penjelasannya di bawah.',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12,
+                    color: (isCorrect ? AppColors.success : AppColors.error)
+                        .withOpacity(0.8),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Custom Assets Icon
+          Image.asset(
+            isCorrect ? 'assets/icons/correct.png' : 'assets/icons/incorrect.png',
+            width: 40,
+            height: 40,
+            errorBuilder: (c, e, s) => const SizedBox.shrink(),
+          ).animate().shake(duration: 500.ms),
+        ],
+      ),
+    ).animate().slideY(begin: 0.2, end: 0).fadeIn();
   }
 }

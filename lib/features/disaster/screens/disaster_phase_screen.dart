@@ -78,7 +78,7 @@ class _DisasterPhaseScreenState extends State<DisasterPhaseScreen> {
   void _onLanjutPressed() async {
     final disasterName = widget.extraData?['disasterName'] ?? '';
     
-    // Simpan progres ke local storage melalui QuizProvider
+    // Mark phase as completed for mission progress
     await context.read<QuizProvider>().markPhaseCompleted(widget.disasterId, widget.phase);
 
     if (!mounted) return;
@@ -133,81 +133,66 @@ class _DisasterPhaseScreenState extends State<DisasterPhaseScreen> {
                     _buildPhaseHeader(phaseContent),
                     const SizedBox(height: 24),
 
-                    // Always show Guide/Articles
-                    if (phaseContent.articles.isNotEmpty) ...[
-                      const Text(
-                        'Panduan Lengkap',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      ...phaseContent.articles.asMap().entries.map((entry) {
-                        return _ArticleCard(
-                          article: entry.value,
-                          index: entry.key,
-                          phaseColor: _phaseColor,
-                        );
-                      }),
-                      const SizedBox(height: 24),
-                    ],
-
-                    // Phase specific media
+                    // Unified alternating layout for Pra and Pasca
                     if (widget.phase == 'pra' || widget.phase == 'pasca') ...[
-                      if (phaseContent.imageUrls.isNotEmpty) ...[
-                        const Text(
-                          'Ilustrasi & Foto',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 1.2,
-                          ),
-                          itemCount: phaseContent.imageUrls.length,
-                          itemBuilder: (context, index) {
-                            return GestureDetector(
-                              onTap: () => _showImageDialog(
-                                  context, phaseContent.imageUrls[index]),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: CachedNetworkImage(
-                                  imageUrl: phaseContent.imageUrls[index],
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) => Container(
-                                      color: AppColors.primarySurface),
-                                  errorWidget: (context, url, error) =>
-                                      Container(
-                                    color: AppColors.primarySurface,
-                                    child: const Icon(
-                                        Icons.broken_image_rounded,
-                                        color: AppColors.textTertiary),
-                                  ),
-                                ),
-                              )
-                                  .animate(
-                                      delay:
-                                          Duration(milliseconds: 100 * index))
-                                  .fadeIn()
-                                  .scale(),
+                      ...() {
+                        final items = <Widget>[];
+                        final articles = phaseContent.articles;
+                        final images = phaseContent.imageUrls;
+                        
+                        int i = 0;
+                        while (i < articles.length || i < images.length) {
+                          if (i < articles.length) {
+                            items.add(
+                              _ArticleCard(
+                                article: articles[i],
+                                index: i,
+                                phaseColor: _phaseColor,
+                              ),
                             );
-                          },
-                        ),
-                      ]
+                            items.add(const SizedBox(height: 12));
+                          }
+                          
+                          if (i < images.length) {
+                            items.add(
+                              GestureDetector(
+                                onTap: () => _showImageDialog(context, images[i]),
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 220,
+                                  margin: const EdgeInsets.only(bottom: 24),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _phaseColor.withOpacity(0.1),
+                                        blurRadius: 15,
+                                        offset: const Offset(0, 5),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: CachedNetworkImage(
+                                      imageUrl: images[i],
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => Container(
+                                        color: AppColors.primarySurface,
+                                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                      ),
+                                      errorWidget: (context, url, error) => Container(
+                                        color: AppColors.primarySurface,
+                                        child: const Icon(Icons.broken_image_rounded, color: AppColors.textTertiary),
+                                      ),
+                                    ),
+                                  ),
+                                ).animate(delay: Duration(milliseconds: 150 * i)).fadeIn().slideY(begin: 0.1, end: 0),
+                            ));
+                          }
+                          i++;
+                        }
+                        return items;
+                      }(),
                     ] else if (widget.phase == 'saat') ...[
                       if (phaseContent.videos.isNotEmpty) ...[
                         const Text(
@@ -480,6 +465,18 @@ class _ArticleCard extends StatelessWidget {
               height: 1.7,
             ),
           ),
+          if (article.imageUrl != null && article.imageUrl!.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: CachedNetworkImage(
+                imageUrl: article.imageUrl!,
+                width: double.infinity,
+                height: 160,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ],
         ],
       ),
     )

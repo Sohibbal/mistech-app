@@ -8,6 +8,19 @@ class NewsDetailScreen extends StatelessWidget {
 
   const NewsDetailScreen({super.key, required this.news});
 
+  String _parseHtml(String htmlString) {
+    String parsed = htmlString.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
+    parsed = parsed.replaceAll(RegExp(r'</p>', caseSensitive: false), '\n\n');
+    parsed = parsed.replaceAll(RegExp(r'<[^>]*>', multiLine: true, caseSensitive: true), '');
+    parsed = parsed.replaceAll('&nbsp;', ' ');
+    parsed = parsed.replaceAll('&amp;', '&');
+    parsed = parsed.replaceAll('&lt;', '<');
+    parsed = parsed.replaceAll('&gt;', '>');
+    parsed = parsed.replaceAll('&quot;', '"');
+    parsed = parsed.replaceAll('&#39;', "'");
+    return parsed.trim();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -62,7 +75,7 @@ class NewsDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    news.fullDescription,
+                    _parseHtml(news.fullDescription),
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 16,

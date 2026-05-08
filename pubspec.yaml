@@ -46,6 +46,7 @@ dependencies:
   camera: ^0.12.0+1
   tflite_flutter: ^0.12.1
   image: ^4.8.0
+  audioplayers: ^6.6.0
 
 dev_dependencies:
   flutter_test:
@@ -62,6 +63,8 @@ flutter:
     # - assets/animations/
     - assets/html/
     - assets/ml/
+    - assets/images/
+    - assets/audio/
 
   fonts:
     - family: Poppins

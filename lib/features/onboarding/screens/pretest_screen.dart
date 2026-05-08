@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
-import '../../quiz/screens/quiz_screen.dart' show OptionButton; // Reusing options if possible, or just copy the style
+import '../../quiz/screens/quiz_screen.dart'
+    show OptionButton; // Reusing options if possible, or just copy the style
 
 class PretestScreen extends StatefulWidget {
   const PretestScreen({super.key});
@@ -22,6 +23,7 @@ class _PretestScreenState extends State<PretestScreen> {
   Map<int, int> _selectedAnswers = {};
   int _currentIndex = 0;
   bool _isSubmitted = false;
+  String? _quizId;
 
   @override
   void initState() {
@@ -33,22 +35,22 @@ class _PretestScreenState extends State<PretestScreen> {
     try {
       final response = await _client.get('/quizzes');
       final data = response.data['data'] as List<dynamic>? ?? [];
-      
+
+      String? quizId;
       List<dynamic> allQuestions = [];
       for (var quiz in data) {
         if (quiz['questions'] != null) {
+          quizId = quiz['id'];
           allQuestions.addAll(quiz['questions']);
         }
       }
 
-      // Shuffle and take 10
+      // Shuffle all available questions
       allQuestions.shuffle(Random());
-      if (allQuestions.length > 10) {
-        allQuestions = allQuestions.sublist(0, 10);
-      }
 
       setState(() {
         _questions = allQuestions;
+        _quizId = quizId;
         _isLoading = false;
       });
     } catch (e) {
@@ -83,27 +85,30 @@ class _PretestScreenState extends State<PretestScreen> {
       final userAns = _selectedAnswers[i];
       final isCorrect = userAns == correctIndex;
       if (isCorrect) correctCount++;
-      
-      answersPayload.add({
-        "question_id": q['id'],
-        "is_correct": isCorrect,
-      });
+
+      answersPayload.add({"question_id": q['id'], "is_correct": isCorrect});
     }
 
-    final score = _questions.isEmpty ? 0 : ((correctCount / _questions.length) * 100).round();
+    final score = _questions.isEmpty
+        ? 0
+        : ((correctCount / _questions.length) * 100).round();
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('pretest_done', true);
     final studentName = prefs.getString('user_name') ?? 'Anonim';
 
     try {
-      await _client.post('/quiz-attempts', data: {
-        "student_name": studentName,
-        "type": "pretest",
-        "score": score,
-        "total_questions": _questions.length,
-        "answers": answersPayload,
-      });
+      await _client.post(
+        '/quiz-attempts',
+        data: {
+          "student_name": studentName,
+          "quiz_id": _quizId,
+          "type": "pretest",
+          "score": score,
+          "total_questions": _questions.length,
+          "answers": answersPayload,
+        },
+      );
     } catch (e) {
       debugPrint("Failed to submit pretest: $e");
     }
@@ -113,7 +118,9 @@ class _PretestScreenState extends State<PretestScreen> {
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           title: const Text(
             'Skor Pre-Test',
             style: TextStyle(
@@ -183,7 +190,9 @@ class _PretestScreenState extends State<PretestScreen> {
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: AppColors.background,
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
       );
     }
 
@@ -220,7 +229,11 @@ class _PretestScreenState extends State<PretestScreen> {
               itemBuilder: (context, index) {
                 final q = _questions[index];
                 final options = q['options'] as List<dynamic>? ?? [];
-                options.sort((a, b) => (a['option_index'] as int).compareTo(b['option_index'] as int));
+                options.sort(
+                  (a, b) => (a['option_index'] as int).compareTo(
+                    b['option_index'] as int,
+                  ),
+                );
 
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
@@ -261,10 +274,14 @@ class _PretestScreenState extends State<PretestScreen> {
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primarySurface : Colors.white,
+                              color: isSelected
+                                  ? AppColors.primarySurface
+                                  : Colors.white,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: isSelected ? AppColors.primary : AppColors.border,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.border,
                                 width: 2,
                               ),
                             ),
@@ -276,13 +293,21 @@ class _PretestScreenState extends State<PretestScreen> {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: isSelected ? AppColors.primary : AppColors.textTertiary,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.textTertiary,
                                       width: 2,
                                     ),
-                                    color: isSelected ? AppColors.primary : Colors.transparent,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : Colors.transparent,
                                   ),
                                   child: isSelected
-                                      ? const Icon(Icons.check, size: 16, color: Colors.white)
+                                      ? const Icon(
+                                          Icons.check,
+                                          size: 16,
+                                          color: Colors.white,
+                                        )
                                       : null,
                                 ),
                                 const SizedBox(width: 12),
@@ -292,8 +317,12 @@ class _PretestScreenState extends State<PretestScreen> {
                                     style: TextStyle(
                                       fontFamily: 'Poppins',
                                       fontSize: 15,
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.textPrimary,
                                     ),
                                   ),
                                 ),
@@ -366,14 +395,19 @@ class _PretestScreenState extends State<PretestScreen> {
                             decoration: BoxDecoration(
                               color: bgColor,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: borderColor, width: 1.5),
+                              border: Border.all(
+                                color: borderColor,
+                                width: 1.5,
+                              ),
                               boxShadow: isCurrent
                                   ? [
                                       BoxShadow(
-                                        color: AppColors.primary.withOpacity(0.3),
+                                        color: AppColors.primary.withOpacity(
+                                          0.3,
+                                        ),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2),
-                                      )
+                                      ),
                                     ]
                                   : null,
                             ),
@@ -412,12 +446,16 @@ class _PretestScreenState extends State<PretestScreen> {
                               side: const BorderSide(color: AppColors.border),
                               foregroundColor: AppColors.textPrimary,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14)),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
-                            child: const Text('Sebelumnya',
-                                style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontWeight: FontWeight.w600)),
+                            child: const Text(
+                              'Sebelumnya',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
                       if (_currentIndex > 0) const SizedBox(width: 12),
@@ -426,7 +464,8 @@ class _PretestScreenState extends State<PretestScreen> {
                         child: SizedBox(
                           height: 52,
                           child: ElevatedButton(
-                            onPressed: _selectedAnswers.containsKey(_currentIndex)
+                            onPressed:
+                                _selectedAnswers.containsKey(_currentIndex)
                                 ? () {
                                     if (_currentIndex < _questions.length - 1) {
                                       _nextQuestion();

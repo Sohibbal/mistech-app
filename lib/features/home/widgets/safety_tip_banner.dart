@@ -35,7 +35,7 @@ class SafetyTipBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Tips Keamanan',
+                  'Tips Refresh',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 14,
@@ -45,7 +45,7 @@ class SafetyTipBanner extends StatelessWidget {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Pastikan Anda selalu memperbarui tas siaga bencana Anda setiap 6 bulan sekali.',
+                  'Pastikan Anda me-refresh halaman ini untuk mendapatkan update terbaru dengan menarik halaman ini ke bawah.',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 13,

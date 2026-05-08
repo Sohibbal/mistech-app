@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/disaster_provider.dart';
 import '../../../providers/quiz_provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class DailyMissionCard extends StatefulWidget {
   const DailyMissionCard({super.key});
@@ -35,49 +36,63 @@ class _DailyMissionCardState extends State<DailyMissionCard> {
       return;
     }
 
-    int totalSteps = dProv.disasters.length * 4; // pra, saat, pasca, kuis
+    int totalSteps = 4 + (dProv.disasters.length * 3); // News + LKPD + Emodul + Quiz + (disasters * 3 phases)
     int completedSteps = 0;
     
-    String? nextDisasterName;
-    String? nextRoute;
+    if (qProv.isNewsOpened) completedSteps++;
+    if (qProv.isLkpdOpened) completedSteps++;
+    if (qProv.isEmodulOpened) completedSteps++;
+    if (qProv.hasCompleted) completedSteps++; // Quiz
+
+    String? nextMission;
+    String nextRoute = '/disasters';
     Object? nextExtra;
+    bool allDisastersCompleted = true;
 
     for (final d in dProv.disasters) {
-      final phases = await qProv.getPhasesStatus(d.id);
-      
+      final phases = qProv.missionPhases[d.id] ?? {};
       bool praDone = phases['pra'] == true;
       bool saatDone = phases['saat'] == true;
       bool pascaDone = phases['pasca'] == true;
-      bool quizDone = qProv.progressMap[d.id]?.hasCompleted == true;
 
       if (praDone) completedSteps++;
       if (saatDone) completedSteps++;
       if (pascaDone) completedSteps++;
-      if (quizDone) completedSteps++;
       
-      if (nextDisasterName == null) {
-        if (!praDone || !saatDone || !pascaDone) {
-           nextDisasterName = d.name;
-           nextRoute = '/disasters/${d.id}';
-           nextExtra = d.toJson();
-        } else if (!quizDone) {
-           nextDisasterName = "Kuis ${d.name}";
-           nextRoute = '/quiz/${d.id}';
-           nextExtra = {'disasterName': d.name, 'quizId': d.id};
-        }
+      if (allDisastersCompleted && (!praDone || !saatDone || !pascaDone)) {
+        allDisastersCompleted = false;
+        nextMission = 'Lanjutkan Belajar\n${d.name}!';
+        nextRoute = '/disasters/${d.id}';
+        nextExtra = d.toJson();
       }
     }
 
-    _progress = totalSteps == 0 ? 0.0 : (completedSteps / totalSteps);
-    if (nextDisasterName != null) {
-      _currentMissionText = 'Lanjutkan Belajar\n$nextDisasterName!';
-      _targetRoute = nextRoute ?? '/disasters';
+    if (!qProv.isNewsOpened && nextMission == null) {
+      nextMission = 'Baca Berita\nTerkini!';
+      nextRoute = '/news';
+    } else if (!qProv.isLkpdOpened && nextMission == null) {
+      nextMission = 'Buka LKPD\nHari Ini!';
+    } else if (!qProv.isEmodulOpened && nextMission == null) {
+      nextMission = 'Buka E-Modul\nBelajar!';
+    } else if (!allDisastersCompleted && nextMission != null) {
+      // nextMission already set above
+    } else if (!qProv.hasCompleted) {
+      nextMission = 'Kerjakan Quiz\nEvaluasi!';
+      nextRoute = '/quiz';
+      nextExtra = {'quizId': qProv.currentQuiz?.id};
+    }
+
+    if (nextMission != null) {
+      _currentMissionText = nextMission;
+      _targetRoute = nextRoute;
       _targetExtra = nextExtra;
     } else {
       _currentMissionText = 'Semua Misi\nTelah Selesai! 🎉';
       _targetRoute = '/disasters';
       _targetExtra = null;
     }
+
+    _progress = totalSteps == 0 ? 0.0 : (completedSteps / totalSteps);
   }
 
   @override
@@ -96,6 +111,10 @@ class _DailyMissionCardState extends State<DailyMissionCard> {
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.5),
+              width: 1.5,
+            ),
             boxShadow: [
               BoxShadow(
                 color: AppColors.primary.withOpacity(0.4),
@@ -237,6 +256,9 @@ class _DailyMissionCardState extends State<DailyMissionCard> {
               ),
             ],
           ),
+        ).animate(onPlay: (c) => c.repeat()).shimmer(
+          duration: 2500.ms,
+          color: Colors.white.withOpacity(0.15),
         );
       }
     );

@@ -5,6 +5,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/disaster_provider.dart';
 import 'providers/quiz_provider.dart';
+import 'providers/music_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,7 @@ class MiSTechApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => DisasterProvider()),
         ChangeNotifierProvider(create: (_) => QuizProvider()),
+        ChangeNotifierProvider(create: (_) => MusicProvider()),
       ],
       child: MaterialApp.router(
         title: 'MiSTech',

@@ -86,6 +86,10 @@ class DisasterCategoryCard extends StatelessWidget {
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.5),
+            width: 1.5,
+          ),
           boxShadow: [
             BoxShadow(
               color: style.gradient[0].withOpacity(0.35),
@@ -94,87 +98,104 @@ class DisasterCategoryCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(20),
-            splashColor: Colors.white.withOpacity(0.1),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Icon container
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  // Disaster name
-                  Text(
-                    disaster.name,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // Button
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
+        child: Stack(
+          children: [
+            // Animated Background
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Opacity(
+                  opacity: 0.3,
+                  child: _buildAnimatedBg(disaster.name),
+                ),
+              ),
+            ),
+            // Foreground Content
+            Positioned.fill(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(20),
+                  splashColor: Colors.white.withOpacity(0.1),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Mulai Belajar',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
+                        // Icon container
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            icon,
                             color: Colors.white,
+                            size: 28,
                           ),
                         ),
-                        SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_forward_rounded,
-                          color: Colors.white,
-                          size: 12,
+
+                        const Spacer(),
+
+                        // Disaster name
+                        Text(
+                          disaster.name,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // Button
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Mulai Belajar',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                color: Colors.white,
+                                size: 12,
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
       )
           .animate(delay: Duration(milliseconds: 100 * index))
@@ -185,6 +206,49 @@ class DisasterCategoryCard extends StatelessWidget {
             duration: 400.ms,
             curve: Curves.easeOutBack,
           ),
+    ).animate(onPlay: (c) => c.repeat(reverse: true)).shimmer(
+      duration: 2500.ms,
+      color: Colors.white.withOpacity(0.15),
+    );
+  }
+
+  Widget _buildAnimatedBg(String name) {
+    String emoji = '🌊';
+    final n = name.toLowerCase();
+    if (n.contains('kebakaran')) {
+      emoji = '🔥';
+    } else if (n.contains('gunung')) {
+      emoji = '🌋';
+    } else if (n.contains('gempa')) {
+      emoji = '⚡';
+    } else if (n.contains('longsor')) {
+      emoji = '🪨';
+    } else if (n.contains('puting') || n.contains('angin')) {
+      emoji = '🌪️';
+    } else if (n.contains('kekeringan')) {
+      emoji = '☀️';
+    }
+
+    return Stack(
+      children: [
+        Positioned(
+          left: -100,
+          top: -100,
+          right: -100,
+          bottom: -100,
+          child: Wrap(
+            spacing: 20,
+            runSpacing: 20,
+            children: List.generate(
+              50,
+              (i) => Text(emoji, style: const TextStyle(fontSize: 36)),
+            ),
+          )
+              .animate(onPlay: (c) => c.repeat())
+              .slideX(begin: 0, end: 0.1, duration: 4000.ms, curve: Curves.linear)
+              .slideY(begin: 0, end: 0.1, duration: 5000.ms, curve: Curves.linear),
+        ),
+      ],
     );
   }
 }

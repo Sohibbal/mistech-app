@@ -19,17 +19,12 @@ class _QuizListScreenState extends State<QuizListScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<QuizProvider>().loadQuizList();
-      // Also make sure disasters are loaded for icons
-      final dp = context.read<DisasterProvider>();
-      if (dp.disasters.isEmpty) dp.loadDisasters();
+      context.read<QuizProvider>().loadQuiz();
     });
   }
 
   Future<void> _handleRefresh() async {
-    await context.read<QuizProvider>().loadQuizList();
-    final dp = context.read<DisasterProvider>();
-    await dp.loadDisasters();
+    await context.read<QuizProvider>().loadQuiz();
   }
 
   @override
@@ -50,45 +45,78 @@ class _QuizListScreenState extends State<QuizListScreen> {
             // Body
             Consumer<QuizProvider>(
               builder: (context, quizProv, _) {
-                if (quizProv.isListLoading) {
+                if (quizProv.isLoading) {
                   return _buildShimmer();
                 }
 
-                if (quizProv.quizzes.isEmpty) {
+                final quiz = quizProv.currentQuiz;
+                if (quiz == null) {
                   return _buildEmpty();
+                }
+                
+                // Calculate if locked
+                final dProv = context.watch<DisasterProvider>();
+                bool isLocked = false;
+                
+                if (!quizProv.isNewsOpened || !quizProv.isLkpdOpened || !quizProv.isEmodulOpened) {
+                  isLocked = true;
+                } else {
+                  for (final d in dProv.disasters) {
+                    final phases = quizProv.missionPhases[d.id] ?? {};
+                    if (phases['pra'] != true || phases['saat'] != true || phases['pasca'] != true) {
+                      isLocked = true;
+                      break;
+                    }
+                  }
                 }
 
                 return SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                   sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final quiz = quizProv.quizzes[index];
-                        final progress = quizProv.progressMap[quiz.disasterId];
-                        final isUpdated = quizProv.isQuizUpdated(quiz);
-                        return _QuizCard(
-                          quiz: quiz,
-                          progress: progress,
-                          isUpdated: isUpdated,
-                          index: index,
-                          onTap: () {
-                            final locked = !(progress?.isUnlocked ?? false);
-                            if (locked) {
-                              _showLockedDialog(context, quiz.disasterName);
-                            } else {
-                              context.push(
-                                '/quiz/${quiz.disasterId}',
-                                extra: {
-                                  'quizId': quiz.id,
-                                  'disasterName': quiz.disasterName
-                                },
-                              );
-                            }
-                          },
-                        );
-                      },
-                      childCount: quizProv.quizzes.length,
-                    ),
+                    delegate: SliverChildListDelegate([
+                      if (isLocked)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.lock_outline, color: AppColors.error, size: 20),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  'Selesaikan semua misi harian (Berita, LKPD, E-Modul, dan semua materi bencana) untuk membuka Quiz.',
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 12,
+                                    color: AppColors.error,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ).animate().fadeIn(),
+                      _QuizCard(
+                        quiz: quiz,
+                        progress: quizProv.progress,
+                        isUpdated: quizProv.isQuizUpdated,
+                        isLocked: isLocked,
+                        onTap: () {
+                          if (isLocked) {
+                            _showLockedDialog(context);
+                            return;
+                          }
+                          context.push(
+                            '/quiz',
+                            extra: {'quizId': quiz.id},
+                          );
+                        },
+                      ),
+                    ]),
                   ),
                 );
               },
@@ -145,7 +173,7 @@ class _QuizListScreenState extends State<QuizListScreen> {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Selesaikan semua fase pembelajaran (Pra, Saat & Pasca) untuk membuka quiz setiap bencana.',
+            'Uji pemahamanmu tentang kebencanaan! Quiz berisi soal pilihan ganda dan benar/salah.',
             style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: 13,
@@ -153,40 +181,101 @@ class _QuizListScreenState extends State<QuizListScreen> {
               height: 1.55,
             ),
           ),
-          const SizedBox(height: 14),
-          // Legend
-          Row(
-            children: [
-              _legendItem(
-                  Icons.lock_rounded, AppColors.textTertiary, 'Terkunci'),
-              const SizedBox(width: 16),
-              _legendItem(Icons.play_circle_rounded, AppColors.primary,
-                  'Bisa dikerjakan'),
-              const SizedBox(width: 16),
-              _legendItem(
-                  Icons.check_circle_rounded, AppColors.success, 'Selesai'),
-            ],
-          ),
         ],
       ),
     ).animate().fadeIn(duration: 400.ms);
   }
 
-  Widget _legendItem(IconData icon, Color color, String label) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 14),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 11,
-            color: color,
-            fontWeight: FontWeight.w500,
+  void _showLockedDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+        ),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        titlePadding: EdgeInsets.zero,
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+        title: Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          decoration: BoxDecoration(
+            color: AppColors.error.withOpacity(0.05),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.lock_person_rounded,
+                  color: AppColors.error,
+                  size: 40,
+                ),
+              ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+              const SizedBox(height: 16),
+              const Text(
+                'Akses Belum Terbuka',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Wah, kamu sedikit lagi sampai! Selesaikan misi berikut untuk membuka Quiz Evaluasi:',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            SizedBox(height: 16),
+            _LockedRequirement(label: 'Baca Berita & Materi'),
+            _LockedRequirement(label: 'Buka LKPD & E-Modul'),
+            _LockedRequirement(label: 'Selesaikan Semua Fase Bencana'),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: const Text(
+                'Siap, Saya Mengerti!',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -194,20 +283,14 @@ class _QuizListScreenState extends State<QuizListScreen> {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          children: List.generate(
-            5,
-            (i) => Container(
-              height: 90,
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: AppColors.primarySurface,
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ).animate(onPlay: (c) => c.repeat()).shimmer(
-                duration: 1200.ms, color: Colors.white.withOpacity(0.6)),
+        child: Container(
+          height: 160,
+          decoration: BoxDecoration(
+            color: AppColors.primarySurface,
+            borderRadius: BorderRadius.circular(20),
           ),
-        ),
+        ).animate(onPlay: (c) => c.repeat()).shimmer(
+            duration: 1200.ms, color: Colors.white.withOpacity(0.6)),
       ),
     );
   }
@@ -236,99 +319,30 @@ class _QuizListScreenState extends State<QuizListScreen> {
       ),
     );
   }
-
-  void _showLockedDialog(BuildContext context, String disasterName) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Row(
-          children: [
-            Icon(Icons.lock_rounded, color: AppColors.warning),
-            SizedBox(width: 10),
-            Text(
-              'Quiz Terkunci',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'Selesaikan terlebih dahulu semua fase pembelajaran $disasterName:\n\n'
-          '✅ Pra Bencana\n'
-          '✅ Saat Bencana\n'
-          '✅ Pasca Bencana\n\n'
-          'Setelah selesai, quiz akan terbuka otomatis.',
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 13,
-            color: AppColors.textSecondary,
-            height: 1.6,
-          ),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Mengerti',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────
-// Quiz Card Widget
+// Quiz Card Widget (unified single quiz)
 // ─────────────────────────────────────────────────
 
 class _QuizCard extends StatelessWidget {
   final QuizModel quiz;
   final QuizProgressRecord? progress;
   final bool isUpdated;
-  final int index;
+  final bool isLocked;
   final VoidCallback onTap;
 
   const _QuizCard({
     required this.quiz,
     required this.progress,
     required this.isUpdated,
-    required this.index,
+    required this.isLocked,
     required this.onTap,
   });
 
-  static IconData _getIcon(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('gempa')) return Icons.terrain_rounded;
-    if (n.contains('banjir')) return Icons.water_rounded;
-    if (n.contains('gunung')) return Icons.volcano_rounded;
-    if (n.contains('tsunami')) return Icons.waves_rounded;
-    if (n.contains('longsor')) return Icons.landslide_rounded;
-    if (n.contains('kebakaran')) return Icons.local_fire_department_rounded;
-    if (n.contains('puting') || n.contains('angin')) return Icons.air_rounded;
-    return Icons.warning_amber_rounded;
-  }
-
-  bool get _isLocked => !(progress?.isUnlocked ?? false);
   bool get _hasCompleted => progress?.hasCompleted ?? false;
 
   Color get _statusColor {
-    if (_isLocked) return AppColors.textTertiary;
     if (_hasCompleted) return AppColors.success;
     return AppColors.primary;
   }
@@ -338,268 +352,275 @@ class _QuizCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          color: isLocked ? Colors.grey.shade100 : Colors.white,
+          gradient: isLocked ? null : LinearGradient(
+            colors: [
+              AppColors.primary.withOpacity(0.06),
+              AppColors.secondary.withOpacity(0.06),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: _isLocked
-                ? AppColors.border
-                : _hasCompleted
-                    ? AppColors.success.withOpacity(0.3)
-                    : AppColors.primarySurface2,
+            color: _hasCompleted
+                ? AppColors.success.withOpacity(0.3)
+                : (isLocked ? Colors.grey.shade300 : AppColors.primarySurface2),
             width: 1.5,
           ),
           boxShadow: [
-            BoxShadow(
-              color: (_isLocked ? Colors.grey : AppColors.primary)
-                  .withOpacity(0.06),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
-            ),
+            if (!isLocked)
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: _isLocked
-                      ? const Color(0xFFF5F5F5)
-                      : AppColors.primarySurface,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Icon(
-                  _isLocked ? Icons.lock_rounded : _getIcon(quiz.disasterName),
-                  color: _isLocked ? AppColors.textTertiary : AppColors.primary,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 14),
-
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            quiz.disasterName,
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: _isLocked
-                                  ? AppColors.textTertiary
-                                  : AppColors.textPrimary,
-                            ),
-                          ),
+              // Top row: icon + title + badge
+              Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, AppColors.secondary],
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
-                        // Updated badge
-                        if (isUpdated) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.warning.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: AppColors.warning.withOpacity(0.4),
+                      ],
+                    ),
+                    child: Icon(isLocked ? Icons.lock_rounded : Icons.quiz_rounded,
+                        color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                quiz.title,
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
                             ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.update_rounded,
-                                    size: 11, color: AppColors.warning),
-                                SizedBox(width: 3),
-                                Text(
-                                  'Updated',
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.warning,
+                            if (isUpdated) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 7, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.warning.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: AppColors.warning.withOpacity(0.4),
                                   ),
                                 ),
-                              ],
-                            ),
-                          )
-                              .animate(onPlay: (c) => c.repeat(reverse: true))
-                              .fadeIn(duration: 600.ms),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Subtitle
-                    Text(
-                      _isLocked
-                          ? 'Selesaikan semua fase pembelajaran'
-                          : _hasCompleted
-                              ? 'Skor terakhir: ${progress?.lastScore ?? 0}%'
-                              : '${quiz.totalQuestions} soal pilihan ganda',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 12,
-                        color: _isLocked
-                            ? AppColors.textTertiary
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Status row
-                    Row(
-                      children: [
-                        // Progress phases if locked
-                        if (_isLocked)
-                          _PhasePipsWidget(disasterId: quiz.disasterId)
-                        else
-                          _StatusChip(
-                            icon: _hasCompleted
-                                ? Icons.check_circle_rounded
-                                : Icons.play_circle_fill_rounded,
-                            label: _hasCompleted
-                                ? 'Selesai — Ulangi?'
-                                : 'Mulai Quiz',
-                            color: _statusColor,
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.update_rounded,
+                                        size: 11, color: AppColors.warning),
+                                    SizedBox(width: 3),
+                                    Text(
+                                      'Updated',
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.warning,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                                  .fadeIn(duration: 600.ms),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          quiz.description,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
                           ),
+                        ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
-              const SizedBox(width: 8),
-              Icon(
-                _isLocked
-                    ? Icons.lock_outline_rounded
-                    : Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: _statusColor,
+              const SizedBox(height: 16),
+              const Divider(color: AppColors.divider),
+              const SizedBox(height: 12),
+
+              // Bottom row: info + action
+              Row(
+                children: [
+                  // Question count
+                  _InfoChip(
+                    icon: Icons.help_outline_rounded,
+                    label: '${quiz.totalQuestions} soal',
+                  ),
+                  const SizedBox(width: 12),
+                  // Passing score
+                  _InfoChip(
+                    icon: Icons.flag_rounded,
+                    label: 'KKM: ${quiz.passingScore}%',
+                  ),
+                  const Spacer(),
+
+                  // Status chip
+                  if (_hasCompleted)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.check_circle_rounded,
+                              size: 14, color: AppColors.success),
+                          const SizedBox(width: 5),
+                          Text(
+                            'Skor: ${progress?.lastScore ?? 0}%',
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.primary, AppColors.secondary],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.play_arrow_rounded,
+                              size: 16, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            'Mulai',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
         ),
       )
-          .animate(delay: Duration(milliseconds: 70 * index))
-          .fadeIn(duration: 350.ms)
-          .slideX(begin: 0.08, end: 0, duration: 350.ms),
+          .animate()
+          .fadeIn(duration: 400.ms)
+          .slideY(begin: 0.08, end: 0, duration: 400.ms),
     );
   }
 }
 
-class _StatusChip extends StatelessWidget {
+class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color color;
 
-  const _StatusChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
+  const _InfoChip({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: AppColors.textTertiary),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textTertiary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LockedRequirement extends StatelessWidget {
+  final String label;
+
+  const _LockedRequirement({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: color,
+          const Icon(Icons.check_circle_rounded, color: AppColors.error, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _PhasePipsWidget extends StatefulWidget {
-  final String disasterId;
-  const _PhasePipsWidget({required this.disasterId});
-
-  @override
-  State<_PhasePipsWidget> createState() => _PhasePipsWidgetState();
-}
-
-class _PhasePipsWidgetState extends State<_PhasePipsWidget> {
-  Map<String, bool> _status = {'pra': false, 'saat': false, 'pasca': false};
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final quizProv = context.read<QuizProvider>();
-    final s = await quizProv.getPhasesStatus(widget.disasterId);
-    if (mounted) setState(() => _status = s);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final phases = [
-      ('Pra', _status['pra'] ?? false),
-      ('Saat', _status['saat'] ?? false),
-      ('Pasca', _status['pasca'] ?? false),
-    ];
-    return Row(
-      children: phases.map((p) {
-        return Container(
-          margin: const EdgeInsets.only(right: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-          decoration: BoxDecoration(
-            color: p.$2
-                ? AppColors.success.withOpacity(0.1)
-                : AppColors.border.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                p.$2 ? Icons.check_rounded : Icons.circle_outlined,
-                size: 10,
-                color: p.$2 ? AppColors.success : AppColors.textTertiary,
-              ),
-              const SizedBox(width: 3),
-              Text(
-                p.$1,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: p.$2 ? AppColors.success : AppColors.textTertiary,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
     );
   }
 }

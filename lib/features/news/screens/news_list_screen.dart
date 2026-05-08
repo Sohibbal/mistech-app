@@ -46,6 +46,19 @@ class _NewsListScreenState extends State<NewsListScreen> {
     }
   }
 
+  String _parseHtml(String htmlString) {
+    String parsed = htmlString.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
+    parsed = parsed.replaceAll(RegExp(r'</p>', caseSensitive: false), '\n\n');
+    parsed = parsed.replaceAll(RegExp(r'<[^>]*>', multiLine: true, caseSensitive: true), '');
+    parsed = parsed.replaceAll('&nbsp;', ' ');
+    parsed = parsed.replaceAll('&amp;', '&');
+    parsed = parsed.replaceAll('&lt;', '<');
+    parsed = parsed.replaceAll('&gt;', '>');
+    parsed = parsed.replaceAll('&quot;', '"');
+    parsed = parsed.replaceAll('&#39;', "'");
+    return parsed.trim();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -142,7 +155,7 @@ class _NewsListScreenState extends State<NewsListScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  news.shortDescription,
+                                  _parseHtml(news.shortDescription),
                                   style: const TextStyle(
                                     fontFamily: 'Poppins',
                                     fontSize: 14,

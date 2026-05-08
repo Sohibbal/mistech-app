@@ -28,7 +28,8 @@ class NewsModel {
     }
 
     String? rawImg = json['image_url'];
-    String finalImg = 'https://images.unsplash.com/photo-1547683905-f686c993b472?q=80&w=1000&auto=format&fit=crop';
+    String finalImg =
+        'https://images.unsplash.com/photo-1547683905-f686c993b472?q=80&w=1000&auto=format&fit=crop';
     if (rawImg != null && rawImg.isNotEmpty) {
       if (rawImg.startsWith('/')) {
         finalImg = 'http://192.168.8.100:3000$rawImg';
@@ -55,6 +56,6 @@ class NewsModel {
     if (content.length > 80) return '${content.substring(0, 80)}...';
     return content;
   }
-  
+
   String get fullDescription => content;
 }

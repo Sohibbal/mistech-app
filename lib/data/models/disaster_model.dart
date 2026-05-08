@@ -22,14 +22,15 @@ class DisasterModel {
   });
 
   factory DisasterModel.fromJson(Map<String, dynamic> json) {
-    final rootVideos = (json['videos'] as List<dynamic>?)
+    final rootVideos =
+        (json['videos'] as List<dynamic>?)
             ?.map((v) => VideoModel.fromJson(v))
             .toList() ??
         [];
 
     String rawIcon = json['icon_url'] ?? '';
     String rawImage = json['image_url'] ?? '';
-    
+
     // Fix IP
     if (rawIcon.contains('192.168.1.8:3000')) {
       rawIcon = rawIcon.replaceAll('192.168.1.8:3000', '192.168.8.100:3000');
@@ -51,7 +52,8 @@ class DisasterModel {
       imageUrl: rawImage,
       category: json['category'] ?? '',
       level: json['level'] ?? 1,
-      phases: (json['phases'] as List<dynamic>?)
+      phases:
+          (json['phases'] as List<dynamic>?)
               ?.map((p) => PhaseContent.fromJson(p, rootVideos))
               .toList() ??
           [],
@@ -92,15 +94,18 @@ class PhaseContent {
     required this.articles,
   });
 
-  factory PhaseContent.fromJson(Map<String, dynamic> json,
-      [List<VideoModel> rootVideos = const []]) {
+  factory PhaseContent.fromJson(
+    Map<String, dynamic> json, [
+    List<VideoModel> rootVideos = const [],
+  ]) {
     final phaseName = json['phase'] ?? '';
-    
-    List<String> rawImages = (json['images'] as List<dynamic>?)
+
+    List<String> rawImages =
+        (json['images'] as List<dynamic>?)
             ?.map((img) => img['image_url'] as String)
             .toList() ??
         [];
-        
+
     List<String> fixedImages = rawImages.map((url) {
       if (url.contains('192.168.1.8:3000')) {
         return url.replaceAll('192.168.1.8:3000', '192.168.8.100:3000');
@@ -116,7 +121,8 @@ class PhaseContent {
       description: json['description'] ?? '',
       imageUrls: fixedImages,
       videos: phaseName == 'saat' ? rootVideos : [],
-      articles: (json['articles'] as List<dynamic>?)
+      articles:
+          (json['articles'] as List<dynamic>?)
               ?.map((a) => ArticleItem.fromJson(a))
               .toList() ??
           [],
@@ -162,14 +168,20 @@ class VideoModel {
 
     // Fix IP for Video
     if (rawVideoUrl.contains('192.168.1.8:3000')) {
-      rawVideoUrl = rawVideoUrl.replaceAll('192.168.1.8:3000', '192.168.8.100:3000');
+      rawVideoUrl = rawVideoUrl.replaceAll(
+        '192.168.1.8:3000',
+        '192.168.8.100:3000',
+      );
     } else if (rawVideoUrl.startsWith('/')) {
       rawVideoUrl = 'http://192.168.8.100:3000$rawVideoUrl';
     }
 
     // Fix IP for Thumbnail
     if (rawThumbnailUrl.contains('192.168.1.8:3000')) {
-      rawThumbnailUrl = rawThumbnailUrl.replaceAll('192.168.1.8:3000', '192.168.8.100:3000');
+      rawThumbnailUrl = rawThumbnailUrl.replaceAll(
+        '192.168.1.8:3000',
+        '192.168.8.100:3000',
+      );
     } else if (rawThumbnailUrl.startsWith('/')) {
       rawThumbnailUrl = 'http://192.168.8.100:3000$rawThumbnailUrl';
     }
@@ -221,7 +233,10 @@ class ArticleItem {
     String? rawImageUrl = json['image_url'];
     if (rawImageUrl != null) {
       if (rawImageUrl.contains('192.168.1.8:3000')) {
-        rawImageUrl = rawImageUrl.replaceAll('192.168.1.8:3000', '192.168.8.100:3000');
+        rawImageUrl = rawImageUrl.replaceAll(
+          '192.168.1.8:3000',
+          '192.168.8.100:3000',
+        );
       } else if (rawImageUrl.startsWith('/')) {
         rawImageUrl = 'http://192.168.8.100:3000$rawImageUrl';
       }

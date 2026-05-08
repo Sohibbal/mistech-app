@@ -1,7 +1,6 @@
 class QuizModel {
   final String id;
-  final String disasterId;
-  final String disasterName;
+  final String title;
   final String description;
   final int totalQuestions;
   final int passingScore; // minimum score percentage to pass
@@ -11,8 +10,7 @@ class QuizModel {
 
   QuizModel({
     required this.id,
-    required this.disasterId,
-    required this.disasterName,
+    required this.title,
     required this.description,
     required this.totalQuestions,
     required this.passingScore,
@@ -24,8 +22,7 @@ class QuizModel {
   factory QuizModel.fromJson(Map<String, dynamic> json) {
     return QuizModel(
       id: json['id']?.toString() ?? '',
-      disasterId: json['disaster_id']?.toString() ?? '',
-      disasterName: json['disaster']?['name'] ?? json['disaster_name'] ?? '',
+      title: json['title'] ?? 'Evaluasi Bencana',
       description: json['description'] ?? '',
       totalQuestions: json['total_questions'] ?? 0,
       passingScore: json['passing_score'] ?? 70,
@@ -42,8 +39,7 @@ class QuizModel {
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'disaster_id': disasterId,
-        'disaster_name': disasterName,
+        'title': title,
         'description': description,
         'total_questions': totalQuestions,
         'passing_score': passingScore,
@@ -96,7 +92,6 @@ class QuizQuestion {
 
 class QuizResult {
   final String quizId;
-  final String disasterId;
   final int totalQuestions;
   final int correctAnswers;
   final List<QuizAnswerRecord> answers;
@@ -104,7 +99,6 @@ class QuizResult {
 
   QuizResult({
     required this.quizId,
-    required this.disasterId,
     required this.totalQuestions,
     required this.correctAnswers,
     required this.answers,
@@ -139,19 +133,14 @@ class QuizAnswerRecord {
   });
 }
 
-/// Tracks which quizzes have been seen vs their current version
-/// Used to show "Quiz Updated" badge
+/// Tracks quiz progress (unified - no per-disaster separation)
 class QuizProgressRecord {
-  final String disasterId;
-  final bool isUnlocked; // true if user completed all 3 phases
   final bool hasCompleted; // true if quiz was taken
   final int? lastScore;
   final String? lastVersion; // version when quiz was last taken
   final DateTime? lastAttempt;
 
   QuizProgressRecord({
-    required this.disasterId,
-    required this.isUnlocked,
     required this.hasCompleted,
     this.lastScore,
     this.lastVersion,

@@ -10,105 +10,126 @@ class QuizProvider extends ChangeNotifier {
   final QuizRepository _repo = QuizRepository();
   final ApiClient _client = ApiClient.instance;
 
-  QuizLoadState _listState = QuizLoadState.idle;
-  QuizLoadState _detailState = QuizLoadState.idle;
+  QuizLoadState _quizState = QuizLoadState.idle;
 
-  List<QuizModel> _quizzes = [];
   QuizModel? _currentQuiz;
-  Map<String, QuizProgressRecord> _progressMap = {};
+  QuizProgressRecord? _progress;
 
   // Active quiz session state
   int _currentQuestionIndex = 0;
   Map<int, int> _selectedAnswers = {}; // question index → selected option index
   bool _isSubmitted = false;
   QuizResult? _lastResult;
-
+  bool _isNewsOpened = false;
+  bool _isLkpdOpened = false;
+  bool _isEmodulOpened = false;
+  Map<String, Map<String, bool>> _missionPhases = {};
+  final Set<int> _checkedQuestions = {}; // questions that have been "Checked" by user
   // Getters
-  QuizLoadState get listState => _listState;
-  QuizLoadState get detailState => _detailState;
-  List<QuizModel> get quizzes => _quizzes;
+  QuizLoadState get quizState => _quizState;
   QuizModel? get currentQuiz => _currentQuiz;
-  Map<String, QuizProgressRecord> get progressMap => _progressMap;
+  QuizProgressRecord? get progress => _progress;
   int get currentQuestionIndex => _currentQuestionIndex;
   Map<int, int> get selectedAnswers => _selectedAnswers;
   bool get isSubmitted => _isSubmitted;
   QuizResult? get lastResult => _lastResult;
+  Set<int> get checkedQuestions => _checkedQuestions;
 
-  bool get isListLoading => _listState == QuizLoadState.loading;
-  bool get isDetailLoading => _detailState == QuizLoadState.loading;
+  bool isQuestionChecked(int index) => _checkedQuestions.contains(index);
+
+  bool get isLoading => _quizState == QuizLoadState.loading;
 
   int? getSelectedAnswer(int index) => _selectedAnswers[index];
   bool get isAllAnswered =>
       _currentQuiz != null &&
       _selectedAnswers.length == _currentQuiz!.questions.length;
 
+  bool get hasCompleted => _progress?.hasCompleted ?? false;
+  int? get lastScore => _progress?.lastScore;
+
+  bool get isNewsOpened => _isNewsOpened;
+  bool get isLkpdOpened => _isLkpdOpened;
+  bool get isEmodulOpened => _isEmodulOpened;
+  Map<String, Map<String, bool>> get missionPhases => _missionPhases;
+
   // ─────────────────────────────────────────
   // Data Loading
   // ─────────────────────────────────────────
 
-  Future<void> loadQuizList() async {
-    _listState = QuizLoadState.loading;
-    notifyListeners();
-
-    try {
-      _quizzes = await _repo.getAllQuizzes();
-      // Load all progress records
-      for (final q in _quizzes) {
-        _progressMap[q.disasterId] = await _repo.getQuizProgress(q.disasterId);
-      }
-      _listState = QuizLoadState.loaded;
-    } catch (e) {
-      _listState = QuizLoadState.error;
-    }
-    notifyListeners();
-  }
-
-  Future<void> loadQuizDetail(String disasterId) async {
-    _detailState = QuizLoadState.loading;
+  Future<void> loadQuiz() async {
+    _quizState = QuizLoadState.loading;
     resetSession();
     notifyListeners();
 
     try {
-      _currentQuiz = await _repo.getQuizByDisaster(disasterId);
-      _detailState = QuizLoadState.loaded;
+      _currentQuiz = await _repo.getQuiz();
+      _progress = await _repo.getQuizProgress();
+      await loadMissions();
+      _quizState = QuizLoadState.loaded;
     } catch (e) {
-      _detailState = QuizLoadState.error;
+      _quizState = QuizLoadState.error;
     }
     notifyListeners();
-  }
-
-  Future<QuizProgressRecord> getProgressForDisaster(String disasterId) async {
-    if (_progressMap.containsKey(disasterId)) {
-      return _progressMap[disasterId]!;
-    }
-    final record = await _repo.getQuizProgress(disasterId);
-    _progressMap[disasterId] = record;
-    return record;
-  }
-
-  // ─────────────────────────────────────────
-  // Phase completion tracking
-  // ─────────────────────────────────────────
-
-  Future<void> markPhaseCompleted(String disasterId, String phase) async {
-    await _repo.markPhaseCompleted(disasterId, phase);
-    // Refresh progress for this disaster
-    _progressMap[disasterId] = await _repo.getQuizProgress(disasterId);
-    notifyListeners();
-  }
-
-  Future<Map<String, bool>> getPhasesStatus(String disasterId) {
-    return _repo.getPhasesStatus(disasterId);
   }
 
   // ─────────────────────────────────────────
   // Quiz Session
+  Future<void> loadMissions() async {
+    _isNewsOpened = await _repo.getMissionNews();
+    _isLkpdOpened = await _repo.getMissionLkpd();
+    _isEmodulOpened = await _repo.getMissionEmodul();
+    _missionPhases = await _repo.getMissionPhases();
+    notifyListeners();
+  }
+
+  Future<void> markNewsOpened() async {
+    if (_isNewsOpened) return;
+    await _repo.setMissionNews();
+    _isNewsOpened = true;
+    notifyListeners();
+  }
+
+  Future<void> markLkpdOpened() async {
+    if (_isLkpdOpened) return;
+    await _repo.setMissionLkpd();
+    _isLkpdOpened = true;
+    notifyListeners();
+  }
+
+  Future<void> markEmodulOpened() async {
+    if (_isEmodulOpened) return;
+    await _repo.setMissionEmodul();
+    _isEmodulOpened = true;
+    notifyListeners();
+  }
+
+  Future<void> markPhaseCompleted(String disasterId, String phase) async {
+    await _repo.setMissionPhase(disasterId, phase);
+    if (!_missionPhases.containsKey(disasterId)) {
+      _missionPhases[disasterId] = {};
+    }
+    _missionPhases[disasterId]![phase] = true;
+    notifyListeners();
+  }
+
   // ─────────────────────────────────────────
 
   void selectAnswer(int questionIndex, int optionIndex) {
-    if (_isSubmitted) return;
+    if (_isSubmitted || _checkedQuestions.contains(questionIndex)) return;
     _selectedAnswers[questionIndex] = optionIndex;
     notifyListeners();
+  }
+
+  bool checkAnswer(int questionIndex) {
+    if (_currentQuiz == null) return false;
+    final q = _currentQuiz!.questions[questionIndex];
+    final selected = _selectedAnswers[questionIndex];
+    
+    if (selected == null) return false;
+    
+    _checkedQuestions.add(questionIndex);
+    notifyListeners();
+    return selected == q.correctIndex;
   }
 
   void goToQuestion(int index) {
@@ -154,7 +175,6 @@ class QuizProvider extends ChangeNotifier {
 
     final result = QuizResult(
       quizId: _currentQuiz!.id,
-      disasterId: _currentQuiz!.disasterId,
       totalQuestions: _currentQuiz!.questions.length,
       correctAnswers: correct,
       answers: answers,
@@ -166,7 +186,6 @@ class QuizProvider extends ChangeNotifier {
 
     // Persist result locally
     await _repo.saveQuizResult(
-      _currentQuiz!.disasterId,
       result.scorePercent,
       _currentQuiz!.version,
     );
@@ -193,9 +212,8 @@ class QuizProvider extends ChangeNotifier {
       debugPrint("Failed to submit evaluation to server: $e");
     }
 
-    // Refresh progress map
-    _progressMap[_currentQuiz!.disasterId] =
-        await _repo.getQuizProgress(_currentQuiz!.disasterId);
+    // Refresh progress
+    _progress = await _repo.getQuizProgress();
 
     notifyListeners();
     return result;
@@ -204,6 +222,7 @@ class QuizProvider extends ChangeNotifier {
   void resetSession() {
     _currentQuestionIndex = 0;
     _selectedAnswers = {};
+    _checkedQuestions.clear();
     _isSubmitted = false;
     _lastResult = null;
   }
@@ -213,9 +232,9 @@ class QuizProvider extends ChangeNotifier {
   // ─────────────────────────────────────────
 
   /// Returns true if the quiz version has changed since last attempt
-  bool isQuizUpdated(QuizModel quiz) {
-    final progress = _progressMap[quiz.disasterId];
-    if (progress == null || !progress.hasCompleted) return false;
-    return progress.lastVersion != quiz.version;
+  bool get isQuizUpdated {
+    if (_progress == null || !_progress!.hasCompleted) return false;
+    if (_currentQuiz == null) return false;
+    return _progress!.lastVersion != _currentQuiz!.version;
   }
 }

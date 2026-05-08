@@ -109,13 +109,12 @@ class AppRouter {
         },
       ),
       GoRoute(
-        path: '/quiz/:disasterId',
+        path: '/quiz',
         name: 'quiz',
         pageBuilder: (c, s) {
-          final disasterId = s.pathParameters['disasterId']!;
           final extra = s.extra as Map<String, dynamic>?;
           return _slide(
-              QuizScreen(disasterId: disasterId, extraData: extra), s);
+              QuizScreen(extraData: extra), s);
         },
       ),
     ],
