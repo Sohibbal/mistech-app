@@ -37,8 +37,8 @@ class AppRouter {
         pageBuilder: (c, s) => _slide(const NameInputScreen(), s),
       ),
       GoRoute(
-        path: '/pretest',
-        name: 'pretest',
+        path: '/diagnostik',
+        name: 'diagnostik',
         pageBuilder: (c, s) => _slide(const PretestScreen(), s),
       ),
       GoRoute(

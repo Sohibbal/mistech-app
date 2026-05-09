@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../quiz/screens/quiz_screen.dart'
     show OptionButton; // Reusing options if possible, or just copy the style
 
@@ -17,6 +18,7 @@ class PretestScreen extends StatefulWidget {
 class _PretestScreenState extends State<PretestScreen> {
   final PageController _pageController = PageController();
   final ApiClient _client = ApiClient.instance;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   bool _isLoading = true;
   List<dynamic> _questions = [];
@@ -29,6 +31,22 @@ class _PretestScreenState extends State<PretestScreen> {
   void initState() {
     super.initState();
     _loadQuestions();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _playSound() async {
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.play(AssetSource('audio/correct.mp3'));
+    } catch (e) {
+      debugPrint("Error playing sound: $e");
+    }
   }
 
   Future<void> _loadQuestions() async {
@@ -94,7 +112,7 @@ class _PretestScreenState extends State<PretestScreen> {
         : ((correctCount / _questions.length) * 100).round();
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('pretest_done', true);
+    await prefs.setBool('diagnostik_done', true);
     final studentName = prefs.getString('user_name') ?? 'Anonim';
 
     try {
@@ -103,7 +121,7 @@ class _PretestScreenState extends State<PretestScreen> {
         data: {
           "student_name": studentName,
           "quiz_id": _quizId,
-          "type": "pretest",
+          "type": "diagnostik",
           "score": score,
           "total_questions": _questions.length,
           "answers": answersPayload,
@@ -113,6 +131,8 @@ class _PretestScreenState extends State<PretestScreen> {
       debugPrint("Failed to submit pretest: $e");
     }
 
+    _playSound(); // Play sound when score is ready
+    
     if (mounted) {
       showDialog(
         context: context,
@@ -122,7 +142,7 @@ class _PretestScreenState extends State<PretestScreen> {
             borderRadius: BorderRadius.circular(24),
           ),
           title: const Text(
-            'Skor Pre-Test',
+            'Skor Diagnostik',
             style: TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.bold,
@@ -207,7 +227,7 @@ class _PretestScreenState extends State<PretestScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Pre-Test'),
+        title: const Text('Diagnostik'),
         automaticallyImplyLeading: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4),
@@ -466,13 +486,14 @@ class _PretestScreenState extends State<PretestScreen> {
                           child: ElevatedButton(
                             onPressed:
                                 _selectedAnswers.containsKey(_currentIndex)
-                                ? () {
-                                    if (_currentIndex < _questions.length - 1) {
-                                      _nextQuestion();
-                                    } else {
-                                      _finishPretest();
+                                  ? () {
+                                      _playSound();
+                                      if (_currentIndex < _questions.length - 1) {
+                                        _nextQuestion();
+                                      } else {
+                                        _finishPretest();
+                                      }
                                     }
-                                  }
                                 : null,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
@@ -484,7 +505,7 @@ class _PretestScreenState extends State<PretestScreen> {
                             child: Text(
                               _currentIndex < _questions.length - 1
                                   ? 'Selanjutnya'
-                                  : 'Selesai Pre-Test',
+                                  : 'Selesai Diagnostik',
                               style: const TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 15,

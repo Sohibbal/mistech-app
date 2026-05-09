@@ -17,19 +17,19 @@ class DisasterCategoryCard extends StatelessWidget {
 
   static const List<_DisasterStyle> _styles = [
   _DisasterStyle(
-      gradient: [Color.fromARGB(255, 211, 14, 14), Color.fromARGB(255, 207, 109, 16)],
-      iconBg: Color(0x331976D2),
-      icon: Icons.terrain_rounded, // Gempa
-    ),
-    _DisasterStyle(
       gradient: [Color(0xFF0277BD), Color.fromARGB(255, 1, 91, 139)],
       iconBg: Color(0x330288D1),
+      icon: Icons.volcano_rounded, // Gempa
+    ),
+    _DisasterStyle(
+      gradient: [Color.fromARGB(255, 211, 14, 14), Color.fromARGB(255, 207, 109, 16)],
+      iconBg: Color(0x331976D2),
       icon: Icons.water_rounded, // Banjir
     ),
     _DisasterStyle(
       gradient: [Color(0xFF00838F), Color(0xFF00ACC1)],
       iconBg: Color(0x3300ACC1),
-      icon: Icons.volcano_rounded, // Gunung
+      icon: Icons.terrain_rounded, // Gunung
     ),
     _DisasterStyle(
       gradient: [Color(0xFF01579B), Color(0xFF0277BD)],

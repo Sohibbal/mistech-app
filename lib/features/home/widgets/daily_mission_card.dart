@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../providers/disaster_provider.dart';
 import '../../../providers/quiz_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DailyMissionCard extends StatefulWidget {
   const DailyMissionCard({super.key});
@@ -20,6 +21,7 @@ class _DailyMissionCardState extends State<DailyMissionCard> {
   String _currentMissionText = 'Misi Harian\nMemuat...';
   String _targetRoute = '/disasters';
   Object? _targetExtra;
+  String? _targetUrl;
 
   @override
   void didChangeDependencies() {
@@ -38,58 +40,59 @@ class _DailyMissionCardState extends State<DailyMissionCard> {
 
     int totalSteps = 4 + (dProv.disasters.length * 3); // News + LKPD + Emodul + Quiz + (disasters * 3 phases)
     int completedSteps = 0;
-    
     if (qProv.isNewsOpened) completedSteps++;
     if (qProv.isLkpdOpened) completedSteps++;
     if (qProv.isEmodulOpened) completedSteps++;
     if (qProv.hasCompleted) completedSteps++; // Quiz
 
+    for (final d in dProv.disasters) {
+      final phases = qProv.missionPhases[d.id] ?? {};
+      if (phases['pra'] == true) completedSteps++;
+      if (phases['saat'] == true) completedSteps++;
+      if (phases['pasca'] == true) completedSteps++;
+    }
+
     String? nextMission;
     String nextRoute = '/disasters';
     Object? nextExtra;
-    bool allDisastersCompleted = true;
+    String? nextUrl;
 
-    for (final d in dProv.disasters) {
-      final phases = qProv.missionPhases[d.id] ?? {};
-      bool praDone = phases['pra'] == true;
-      bool saatDone = phases['saat'] == true;
-      bool pascaDone = phases['pasca'] == true;
-
-      if (praDone) completedSteps++;
-      if (saatDone) completedSteps++;
-      if (pascaDone) completedSteps++;
-      
-      if (allDisastersCompleted && (!praDone || !saatDone || !pascaDone)) {
-        allDisastersCompleted = false;
-        nextMission = 'Lanjutkan Belajar\n${d.name}!';
-        nextRoute = '/disasters/${d.id}';
-        nextExtra = d.toJson();
-      }
-    }
-
-    if (!qProv.isNewsOpened && nextMission == null) {
-      nextMission = 'Baca Berita\nTerkini!';
-      nextRoute = '/news';
-    } else if (!qProv.isLkpdOpened && nextMission == null) {
+    if (!qProv.isLkpdOpened) {
       nextMission = 'Buka LKPD\nHari Ini!';
-    } else if (!qProv.isEmodulOpened && nextMission == null) {
-      nextMission = 'Buka E-Modul\nBelajar!';
-    } else if (!allDisastersCompleted && nextMission != null) {
-      // nextMission already set above
-    } else if (!qProv.hasCompleted) {
-      nextMission = 'Kerjakan Quiz\nEvaluasi!';
-      nextRoute = '/quiz';
-      nextExtra = {'quizId': qProv.currentQuiz?.id};
+      nextUrl = qProv.lkpdUrl;
+    } else {
+      bool allDisastersCompleted = true;
+      for (final d in dProv.disasters) {
+        final phases = qProv.missionPhases[d.id] ?? {};
+        bool praDone = phases['pra'] == true;
+        bool saatDone = phases['saat'] == true;
+        bool pascaDone = phases['pasca'] == true;
+
+        if (allDisastersCompleted && (!praDone || !saatDone || !pascaDone)) {
+          allDisastersCompleted = false;
+          nextMission = 'Lanjutkan Belajar\n${d.name}!';
+          nextRoute = '/disasters/${d.id}';
+          nextExtra = d.toJson();
+        }
+      }
+
+      if (allDisastersCompleted && !qProv.hasCompleted) {
+        nextMission = 'Kerjakan Quiz\nEvaluasi!';
+        nextRoute = '/quiz';
+        nextExtra = {'quizId': qProv.currentQuiz?.id};
+      }
     }
 
     if (nextMission != null) {
       _currentMissionText = nextMission;
       _targetRoute = nextRoute;
       _targetExtra = nextExtra;
+      _targetUrl = nextUrl;
     } else {
       _currentMissionText = 'Semua Misi\nTelah Selesai! 🎉';
       _targetRoute = '/disasters';
       _targetExtra = null;
+      _targetUrl = null;
     }
 
     _progress = totalSteps == 0 ? 0.0 : (completedSteps / totalSteps);
@@ -220,8 +223,21 @@ class _DailyMissionCardState extends State<DailyMissionCard> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    context.push(_targetRoute, extra: _targetExtra);
+                  onPressed: () async {
+                    if (_targetUrl != null) {
+                      if (_currentMissionText.contains('LKPD')) {
+                        context.read<QuizProvider>().markLkpdOpened();
+                      } else if (_currentMissionText.contains('E-Modul')) {
+                        context.read<QuizProvider>().markEmodulOpened();
+                      }
+                      
+                      final uri = Uri.parse(_targetUrl!);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    } else {
+                      context.push(_targetRoute, extra: _targetExtra);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,

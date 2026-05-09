@@ -36,7 +36,21 @@ class DisasterProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _disasters = await _repository.getDisasters(category: category);
+      final results = await _repository.getDisasters(category: category);
+      
+      // Fixed Order: Banjir first, then Kebakaran Hutan
+      results.sort((a, b) {
+        final nameA = a.name.toLowerCase();
+        final nameB = b.name.toLowerCase();
+        
+        if (nameA.contains('banjir')) return -1;
+        if (nameB.contains('banjir')) return 1;
+        if (nameA.contains('kebakaran')) return -1;
+        if (nameB.contains('kebakaran')) return 1;
+        return 0;
+      });
+
+      _disasters = results;
       _listState = LoadingState.loaded;
     } catch (e) {
       _errorMessage = e.toString();

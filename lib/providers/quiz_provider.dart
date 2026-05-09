@@ -23,6 +23,8 @@ class QuizProvider extends ChangeNotifier {
   bool _isNewsOpened = false;
   bool _isLkpdOpened = false;
   bool _isEmodulOpened = false;
+  String? _lkpdUrl;
+  String? _eModulUrl;
   Map<String, Map<String, bool>> _missionPhases = {};
   final Set<int> _checkedQuestions = {}; // questions that have been "Checked" by user
   // Getters
@@ -50,6 +52,8 @@ class QuizProvider extends ChangeNotifier {
   bool get isNewsOpened => _isNewsOpened;
   bool get isLkpdOpened => _isLkpdOpened;
   bool get isEmodulOpened => _isEmodulOpened;
+  String? get lkpdUrl => _lkpdUrl;
+  String? get eModulUrl => _eModulUrl;
   Map<String, Map<String, bool>> get missionPhases => _missionPhases;
 
   // ─────────────────────────────────────────
@@ -65,6 +69,7 @@ class QuizProvider extends ChangeNotifier {
       _currentQuiz = await _repo.getQuiz();
       _progress = await _repo.getQuizProgress();
       await loadMissions();
+      await fetchMaterials();
       _quizState = QuizLoadState.loaded;
     } catch (e) {
       _quizState = QuizLoadState.error;
@@ -101,6 +106,38 @@ class QuizProvider extends ChangeNotifier {
     await _repo.setMissionEmodul();
     _isEmodulOpened = true;
     notifyListeners();
+  }
+
+  Future<void> fetchMaterials() async {
+    try {
+      final response = await _client.get('/materials');
+      if (response.data['status'] == 'success') {
+        final list = response.data['data'] as List<dynamic>? ?? [];
+        for (var item in list) {
+          final type = item['type'];
+          String rawUrl = item['file_url'];
+
+          String finalUrl = rawUrl;
+          if (finalUrl.contains('mistech.up.railway.app')) {
+            finalUrl = finalUrl.replaceAll(
+              'https://mistech.up.railway.app',
+              'https://mistech.up.railway.app',
+            );
+          } else if (finalUrl.startsWith('/')) {
+            finalUrl = 'https://mistech.up.railway.app$finalUrl';
+          }
+
+          if (type == 'LKPD') {
+            _lkpdUrl = finalUrl;
+          } else if (type == 'E-MODUL') {
+            _eModulUrl = finalUrl;
+          }
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch materials: $e");
+    }
   }
 
   Future<void> markPhaseCompleted(String disasterId, String phase) async {

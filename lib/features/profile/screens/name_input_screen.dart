@@ -37,7 +37,7 @@ class _NameInputScreenState extends State<NameInputScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_name', name);
       if (mounted) {
-        context.go('/pretest');
+        context.go('/diagnostik');
       }
     }
   }
@@ -122,7 +122,7 @@ class _NameInputScreenState extends State<NameInputScreen> {
                     ),
                   ),
                   child: const Text(
-                    'Mulai Pretest',
+                    'Mulai Diagnostik',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

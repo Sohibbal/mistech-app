@@ -27,8 +27,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentNavIndex = 0;
   String _userName = 'Pengguna';
-  String? _lkpdUrl;
-  String? _eModulUrl;
 
   // ── Animasi floating icons ──
   late AnimationController _floatCtrl1;
@@ -48,9 +46,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
     _loadUserName();
-    _fetchMaterials();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DisasterProvider>().loadDisasters();
+      context.read<QuizProvider>().fetchMaterials();
     });
 
     // Setup floating animations (offset Y, durasi berbeda agar tidak sinkron)
@@ -96,38 +94,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  Future<void> _fetchMaterials() async {
-    try {
-      final response = await ApiClient.instance.get('/materials');
-      if (response.data['status'] == 'success') {
-        final list = response.data['data'] as List<dynamic>? ?? [];
-        for (var item in list) {
-          final type = item['type'];
-          String rawUrl = item['file_url'];
-
-          String finalUrl = rawUrl;
-          if (finalUrl.contains('mistech.up.railway.app')) {
-            finalUrl = finalUrl.replaceAll(
-              'https://mistech.up.railway.app',
-              'https://mistech.up.railway.app',
-            );
-          } else if (finalUrl.startsWith('/')) {
-            finalUrl = 'https://mistech.up.railway.app$finalUrl';
-          }
-
-          if (type == 'LKPD' && _lkpdUrl == null) {
-            _lkpdUrl = finalUrl;
-          } else if (type == 'E-MODUL' && _eModulUrl == null) {
-            _eModulUrl = finalUrl;
-          }
-        }
-        if (mounted) setState(() {});
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -158,7 +124,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       dProv.loadDisasters(),
       qProv.loadQuiz(),
       _loadUserName(),
-      _fetchMaterials(),
     ]);
   }
 
@@ -330,10 +295,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         icon: Icons.assignment_rounded,
                         color: AppColors.primary,
                         url:
-                            _lkpdUrl ??
+                            context.watch<QuizProvider>().lkpdUrl ??
                             'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-                        // Ganti dengan path asset Anda nanti, contoh: imagePath: 'assets/images/sampul_lkpd.png',
-                        // Jika menggunakan URL internet, tetap bisa.
                         imagePath: 'assets/images/sampul_lkpd.png',
                       );
                     } else if (index == 1) {
@@ -343,9 +306,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         icon: Icons.menu_book_rounded,
                         color: Colors.orange,
                         url:
-                            _eModulUrl ??
+                            context.watch<QuizProvider>().eModulUrl ??
                             'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-                        // Ganti dengan path asset Anda nanti, contoh: imagePath: 'assets/images/sampul_emodul.png',
                         imagePath: 'assets/images/sampul_emodul.png',
                       );
                     } else {
