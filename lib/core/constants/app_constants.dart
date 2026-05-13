@@ -1,8 +1,7 @@
 class AppConstants {
-  // API
-  // Use 10.0.2.2 for Android Emulator, localhost for iOS/Web
-  static const String baseUrl = 'https://mistech.up.railway.app/api';
-  // static const String baseUrl = 'http://192.168.0.228:3000/api';
+  
+  static const String baseUrl = 'https://mistechgeosentra.com/api';
+
   static const int connectTimeout = 30000;
   static const int receiveTimeout = 30000;
 
