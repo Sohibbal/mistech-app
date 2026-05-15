@@ -2,6 +2,10 @@ class AppConstants {
   
   static const String baseUrl = 'https://mistechgeosentra.com/api';
 
+  /// Base URL for resolving relative media URLs (images, videos) from the API.
+  /// Change this to your local IP (e.g. 'http://192.168.x.x:3000') during development.
+  static const String cdnBaseUrl = 'https://mistechgeosentra.com';
+
   static const int connectTimeout = 30000;
   static const int receiveTimeout = 30000;
 

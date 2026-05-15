@@ -19,6 +19,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   ChewieController? _chewieController;
   bool _isLoading = true;
   bool _hasError = false;
+  String _loadingMessage = 'Mempersiapkan video...';
 
   String get videoUrl => widget.videoData['videoUrl'] ?? '';
   String get title => widget.videoData['title'] ?? 'Video Edukasi';
@@ -36,10 +37,32 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Future<void> _initVideo() async {
+    if (videoUrl.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
+      return;
+    }
+
     try {
+      setState(() => _loadingMessage = 'Menghubungkan ke server...');
+
       _videoController = VideoPlayerController.networkUrl(
         Uri.parse(videoUrl),
+        httpHeaders: const {
+          // Hint the server that we want streaming
+          'Connection': 'keep-alive',
+        },
       );
+
+      // Listen for buffering state changes
+      _videoController!.addListener(_onVideoStateChanged);
+
+      setState(() => _loadingMessage = 'Memuat video...');
+
       await _videoController!.initialize();
 
       _chewieController = ChewieController(
@@ -55,7 +78,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           backgroundColor: AppColors.primarySurface,
           bufferedColor: AppColors.primarySurface2,
         ),
-        placeholder: Container(color: AppColors.background),
+        placeholder: Container(
+          color: Colors.black,
+          child: const Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primary,
+              strokeWidth: 2,
+            ),
+          ),
+        ),
         errorBuilder: (context, errorMessage) {
           return Center(
             child: Column(
@@ -68,6 +99,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   style: const TextStyle(
                       color: AppColors.textSecondary, fontFamily: 'Poppins'),
                 ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _retryVideo,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Coba Lagi'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    textStyle: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ],
             ),
           );
@@ -78,6 +122,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         setState(() => _isLoading = false);
       }
     } catch (e) {
+      debugPrint('Video init error: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -87,9 +132,32 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
   }
 
+  void _onVideoStateChanged() {
+    // This listener keeps the UI in sync with buffering state
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _retryVideo() {
+    _chewieController?.dispose();
+    _videoController?.removeListener(_onVideoStateChanged);
+    _videoController?.dispose();
+    _videoController = null;
+    _chewieController = null;
+
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _loadingMessage = 'Mempersiapkan video...';
+    });
+    _initVideo();
+  }
+
   @override
   void dispose() {
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    _videoController?.removeListener(_onVideoStateChanged);
     _chewieController?.dispose();
     _videoController?.dispose();
     super.dispose();
@@ -124,7 +192,43 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           // Video Player
           AspectRatio(
             aspectRatio: 16 / 9,
-            child: _buildVideoContent(),
+            child: Stack(
+              children: [
+                _buildVideoContent(),
+                // Buffering overlay
+                if (!_isLoading &&
+                    !_hasError &&
+                    _videoController != null &&
+                    _videoController!.value.isBuffering)
+                  Container(
+                    color: Colors.black26,
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Buffering...',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
 
           // Video Info
@@ -148,7 +252,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.3),
+                      color: AppColors.primary.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
@@ -196,56 +300,76 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   Widget _buildVideoContent() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+      return Container(
+        color: Colors.black,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 36,
+                height: 36,
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
+                  strokeWidth: 3,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _loadingMessage,
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
     if (_hasError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: AppColors.textTertiary,
-              size: 60,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Gagal memuat video.\nPeriksa koneksi internet Anda.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                color: AppColors.textSecondary,
-                fontSize: 14,
+      return Container(
+        color: Colors.black,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline_rounded,
+                color: Colors.white54,
+                size: 60,
               ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _isLoading = true;
-                  _hasError = false;
-                });
-                _initVideo();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                'Coba Lagi',
+              const SizedBox(height: 12),
+              const Text(
+                'Gagal memuat video.\nPeriksa koneksi internet Anda.',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Poppins',
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
+                  color: Colors.white70,
+                  fontSize: 14,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _retryVideo,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Coba Lagi'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
