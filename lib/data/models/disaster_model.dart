@@ -115,19 +115,24 @@ class PhaseContent {
 
     List<String> rawImages =
         (json['images'] as List<dynamic>?)
-            ?.map((img) => img['image_url'] as String)
+            ?.where((img) => img['image_url'] != null)
+            .map((img) => img['image_url'].toString())
             .toList() ??
         [];
 
     List<String> fixedImages =
         rawImages.map((url) => DisasterModel._fixMediaUrl(url)).toList();
 
+    // App design expects videos to always be in the 'saat' phase.
+    // The backend might mistakenly return videos with phase 'pra'.
+    final phaseVideos = phaseName == 'saat' ? rootVideos : <VideoModel>[];
+
     return PhaseContent(
       phase: phaseName,
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       imageUrls: fixedImages,
-      videos: phaseName == 'saat' ? rootVideos : [],
+      videos: phaseVideos,
       articles:
           (json['articles'] as List<dynamic>?)
               ?.map((a) => ArticleItem.fromJson(a))
