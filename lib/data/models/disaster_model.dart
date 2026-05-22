@@ -1,3 +1,5 @@
+import '../../core/constants/app_constants.dart';
+
 class DisasterModel {
   final String id;
   final String name;
@@ -31,18 +33,8 @@ class DisasterModel {
     String rawIcon = json['icon_url'] ?? '';
     String rawImage = json['image_url'] ?? '';
 
-    // Fix IP
-    if (rawIcon.contains('192.168.1.8:3000')) {
-      rawIcon = rawIcon.replaceAll('192.168.1.8:3000', '192.168.8.100:3000');
-    } else if (rawIcon.startsWith('/')) {
-      rawIcon = 'http://192.168.8.100:3000$rawIcon';
-    }
-
-    if (rawImage.contains('192.168.1.8:3000')) {
-      rawImage = rawImage.replaceAll('192.168.1.8:3000', '192.168.8.100:3000');
-    } else if (rawImage.startsWith('/')) {
-      rawImage = 'http://192.168.8.100:3000$rawImage';
-    }
+    rawIcon = _fixMediaUrl(rawIcon);
+    rawImage = _fixMediaUrl(rawImage);
 
     return DisasterModel(
       id: json['id']?.toString() ?? '',
@@ -75,6 +67,27 @@ class DisasterModel {
       'phases': phases.map((p) => p.toJson()).toList(),
     };
   }
+
+  /// Resolve a media URL from the API.
+  /// - Absolute URLs (https://...) are returned as-is.
+  /// - Relative paths (/uploads/...) are prepended with cdnBaseUrl.
+  /// - Legacy hardcoded local IPs are replaced with cdnBaseUrl.
+  static String _fixMediaUrl(String url) {
+    if (url.isEmpty) return url;
+
+    // Replace any hardcoded local dev IPs with the production CDN
+    final localIpPattern = RegExp(r'https?://192\.168\.\d+\.\d+:\d+');
+    if (localIpPattern.hasMatch(url)) {
+      return url.replaceFirst(localIpPattern, AppConstants.cdnBaseUrl);
+    }
+
+    // Relative path → prepend base
+    if (url.startsWith('/')) {
+      return '${AppConstants.cdnBaseUrl}$url';
+    }
+
+    return url;
+  }
 }
 
 class PhaseContent {
@@ -102,25 +115,24 @@ class PhaseContent {
 
     List<String> rawImages =
         (json['images'] as List<dynamic>?)
-            ?.map((img) => img['image_url'] as String)
+            ?.where((img) => img['image_url'] != null)
+            .map((img) => img['image_url'].toString())
             .toList() ??
         [];
 
-    List<String> fixedImages = rawImages.map((url) {
-      if (url.contains('192.168.1.8:3000')) {
-        return url.replaceAll('192.168.1.8:3000', '192.168.8.100:3000');
-      } else if (url.startsWith('/')) {
-        return 'http://192.168.8.100:3000$url';
-      }
-      return url;
-    }).toList();
+    List<String> fixedImages =
+        rawImages.map((url) => DisasterModel._fixMediaUrl(url)).toList();
+
+    // App design expects videos to always be in the 'saat' phase.
+    // The backend might mistakenly return videos with phase 'pra'.
+    final phaseVideos = phaseName == 'saat' ? rootVideos : <VideoModel>[];
 
     return PhaseContent(
       phase: phaseName,
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       imageUrls: fixedImages,
-      videos: phaseName == 'saat' ? rootVideos : [],
+      videos: phaseVideos,
       articles:
           (json['articles'] as List<dynamic>?)
               ?.map((a) => ArticleItem.fromJson(a))
@@ -166,25 +178,8 @@ class VideoModel {
     String rawVideoUrl = json['video_url'] ?? '';
     String rawThumbnailUrl = json['thumbnail_url'] ?? '';
 
-    // Fix IP for Video
-    if (rawVideoUrl.contains('192.168.1.8:3000')) {
-      rawVideoUrl = rawVideoUrl.replaceAll(
-        '192.168.1.8:3000',
-        '192.168.8.100:3000',
-      );
-    } else if (rawVideoUrl.startsWith('/')) {
-      rawVideoUrl = 'http://192.168.8.100:3000$rawVideoUrl';
-    }
-
-    // Fix IP for Thumbnail
-    if (rawThumbnailUrl.contains('192.168.1.8:3000')) {
-      rawThumbnailUrl = rawThumbnailUrl.replaceAll(
-        '192.168.1.8:3000',
-        '192.168.8.100:3000',
-      );
-    } else if (rawThumbnailUrl.startsWith('/')) {
-      rawThumbnailUrl = 'http://192.168.8.100:3000$rawThumbnailUrl';
-    }
+    rawVideoUrl = DisasterModel._fixMediaUrl(rawVideoUrl);
+    rawThumbnailUrl = DisasterModel._fixMediaUrl(rawThumbnailUrl);
 
     return VideoModel(
       id: json['id']?.toString() ?? '',
@@ -232,14 +227,7 @@ class ArticleItem {
   factory ArticleItem.fromJson(Map<String, dynamic> json) {
     String? rawImageUrl = json['image_url'];
     if (rawImageUrl != null) {
-      if (rawImageUrl.contains('192.168.1.8:3000')) {
-        rawImageUrl = rawImageUrl.replaceAll(
-          '192.168.1.8:3000',
-          '192.168.8.100:3000',
-        );
-      } else if (rawImageUrl.startsWith('/')) {
-        rawImageUrl = 'http://192.168.8.100:3000$rawImageUrl';
-      }
+      rawImageUrl = DisasterModel._fixMediaUrl(rawImageUrl);
     }
 
     return ArticleItem(

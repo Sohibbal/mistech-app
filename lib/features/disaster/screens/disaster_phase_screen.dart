@@ -133,93 +133,92 @@ class _DisasterPhaseScreenState extends State<DisasterPhaseScreen> {
                     _buildPhaseHeader(phaseContent),
                     const SizedBox(height: 24),
 
-                    // Unified alternating layout for Pra and Pasca
-                    if (widget.phase == 'pra' || widget.phase == 'pasca') ...[
-                      ...() {
-                        final items = <Widget>[];
-                        final articles = phaseContent.articles;
-                        final images = phaseContent.imageUrls;
+                    // Generic layout for all phases (Articles, Images, Videos)
+                    ...() {
+                      final items = <Widget>[];
+                      final articles = phaseContent.articles;
+                      final images = phaseContent.imageUrls;
+                      
+                      int i = 0;
+                      while (i < articles.length || i < images.length) {
+                        if (i < articles.length) {
+                          items.add(
+                            _ArticleCard(
+                              article: articles[i],
+                              index: i,
+                              phaseColor: _phaseColor,
+                            ),
+                          );
+                          items.add(const SizedBox(height: 12));
+                        }
                         
-                        int i = 0;
-                        while (i < articles.length || i < images.length) {
-                          if (i < articles.length) {
-                            items.add(
-                              _ArticleCard(
-                                article: articles[i],
-                                index: i,
-                                phaseColor: _phaseColor,
-                              ),
-                            );
-                            items.add(const SizedBox(height: 12));
-                          }
-                          
-                          if (i < images.length) {
-                            items.add(
-                              GestureDetector(
-                                onTap: () => _showImageDialog(context, images[i]),
-                                child: Container(
-                                  width: double.infinity,
-                                  height: 220,
-                                  margin: const EdgeInsets.only(bottom: 24),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _phaseColor.withOpacity(0.1),
-                                        blurRadius: 15,
-                                        offset: const Offset(0, 5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: CachedNetworkImage(
-                                      imageUrl: images[i],
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) => Container(
-                                        color: AppColors.primarySurface,
-                                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                                      ),
-                                      errorWidget: (context, url, error) => Container(
-                                        color: AppColors.primarySurface,
-                                        child: const Icon(Icons.broken_image_rounded, color: AppColors.textTertiary),
-                                      ),
+                        if (i < images.length) {
+                          items.add(
+                            GestureDetector(
+                              onTap: () => _showImageDialog(context, images[i]),
+                              child: Container(
+                                width: double.infinity,
+                                height: 220,
+                                margin: const EdgeInsets.only(bottom: 24),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _phaseColor.withOpacity(0.1),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: CachedNetworkImage(
+                                    imageUrl: images[i],
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(
+                                      color: AppColors.primarySurface,
+                                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                    ),
+                                    errorWidget: (context, url, error) => Container(
+                                      color: AppColors.primarySurface,
+                                      child: const Icon(Icons.broken_image_rounded, color: AppColors.textTertiary),
                                     ),
                                   ),
-                                ).animate(delay: Duration(milliseconds: 150 * i)).fadeIn().slideY(begin: 0.1, end: 0),
-                            ));
-                          }
-                          i++;
+                                ),
+                              ).animate(delay: Duration(milliseconds: 150 * i)).fadeIn().slideY(begin: 0.1, end: 0),
+                          ));
                         }
-                        return items;
-                      }(),
-                    ] else if (widget.phase == 'saat') ...[
-                      if (phaseContent.videos.isNotEmpty) ...[
-                        const Text(
-                          'Video Simulasi',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
+                        i++;
+                      }
+                      return items;
+                    }(),
+
+                    if (phaseContent.videos.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Video Simulasi',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
                         ),
-                        const SizedBox(height: 14),
-                        ...phaseContent.videos.asMap().entries.map((entry) {
-                          return _VideoCard(
-                            video: entry.value,
-                            index: entry.key,
-                            onTap: () => context.push('/video', extra: {
-                              'title': entry.value.title,
-                              'videoUrl': entry.value.videoUrl,
-                              'thumbnailUrl': entry.value.thumbnailUrl.isNotEmpty 
-                                  ? entry.value.thumbnailUrl 
-                                  : (provider.selectedDisaster?.imageUrl ?? ''),
-                              'description': entry.value.description,
-                            }),
-                          );
-                        }),
-                      ]
+                      ),
+                      const SizedBox(height: 14),
+                      ...phaseContent.videos.asMap().entries.map((entry) {
+                        return _VideoCard(
+                          video: entry.value,
+                          index: entry.key,
+                          onTap: () => context.push('/video', extra: {
+                            'title': entry.value.title,
+                            'videoUrl': entry.value.videoUrl,
+                            'thumbnailUrl': entry.value.thumbnailUrl.isNotEmpty 
+                                ? entry.value.thumbnailUrl 
+                                : (provider.selectedDisaster?.imageUrl ?? ''),
+                            'description': entry.value.description,
+                          }),
+                        );
+                      }),
                     ],
                   ],
                 ),

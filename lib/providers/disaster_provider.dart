@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:developer' as developer;
 import '../../data/models/disaster_model.dart';
 import '../../data/repositories/disaster_repository.dart';
 
@@ -52,9 +53,20 @@ class DisasterProvider extends ChangeNotifier {
 
       _disasters = results;
       _listState = LoadingState.loaded;
-    } catch (e) {
+
+      developer.log(
+        '✅ Loaded ${results.length} disasters from API',
+        name: 'DisasterProvider',
+      );
+    } catch (e, stackTrace) {
       _errorMessage = e.toString();
       _listState = LoadingState.error;
+      developer.log(
+        '❌ loadDisasters FAILED: $e',
+        name: 'DisasterProvider',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
     notifyListeners();
   }
@@ -67,9 +79,19 @@ class DisasterProvider extends ChangeNotifier {
     try {
       _selectedDisaster = await _repository.getDisasterDetail(id);
       _detailState = LoadingState.loaded;
-    } catch (e) {
+      developer.log(
+        '✅ Loaded detail for disaster: ${_selectedDisaster?.name}',
+        name: 'DisasterProvider',
+      );
+    } catch (e, stackTrace) {
       _errorMessage = e.toString();
       _detailState = LoadingState.error;
+      developer.log(
+        '❌ loadDisasterDetail($id) FAILED: $e',
+        name: 'DisasterProvider',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
     notifyListeners();
   }
@@ -84,8 +106,18 @@ class DisasterProvider extends ChangeNotifier {
         phase: phase,
       );
       _videoState = LoadingState.loaded;
-    } catch (e) {
+      developer.log(
+        '✅ Loaded ${_videos.length} videos',
+        name: 'DisasterProvider',
+      );
+    } catch (e, stackTrace) {
       _videoState = LoadingState.error;
+      developer.log(
+        '❌ loadVideos FAILED: $e',
+        name: 'DisasterProvider',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
     notifyListeners();
   }
